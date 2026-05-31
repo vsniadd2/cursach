@@ -13,4 +13,6 @@ npm start
 
 API: http://localhost:5278
 
+Все настройки (БД, JWT, seed-пользователь) захардкожены в `appsettings*.json` и `frontend/scripts/seed.js`. Файлов `.env` в проекте нет.
+
 Подробнее — в `start/start.txt`.

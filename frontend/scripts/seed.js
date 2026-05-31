@@ -1,9 +1,9 @@
 /* eslint-disable no-console */
 
-/** Должны совпадать с SeedUser в backend (appsettings.Development.json / docker-compose). */
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5278';
-const USERNAME = process.env.SEED_USERNAME || 'ivan';
-const PASSWORD = process.env.SEED_PASSWORD || '123456';
+/** Захардкожено для учебного проекта (см. SeedUser в backend/appsettings). */
+const API_BASE_URL = 'http://localhost:5278';
+const USERNAME = 'ivan';
+const PASSWORD = '123456';
 
 async function postJson(path, body, accessToken) {
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -25,14 +25,12 @@ async function postJson(path, body, accessToken) {
 }
 
 async function main() {
-  // 1) login
   const login = await postJson('/auth/login', { username: USERNAME, password: PASSWORD });
   const accessToken = login?.accessToken;
   if (!accessToken) {
     throw new Error('Seed failed: no accessToken from /auth/login');
   }
 
-  // 2) run seed (idempotent)
   const result = await postJson('/seed/run', {}, accessToken);
   const seeded = !!result?.seeded;
   console.log(seeded ? 'Seed: inserted demo data into DB.' : 'Seed: DB already has data, skipped.');
@@ -42,4 +40,3 @@ main().catch((e) => {
   console.error(String(e?.message || e));
   process.exitCode = 1;
 });
-

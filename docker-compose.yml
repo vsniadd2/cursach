@@ -24,16 +24,8 @@ services:
     ports:
       - "5278:5278"
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://0.0.0.0:5278
-      JWT_SECRET: "change-me-in-production-super-long-secret"
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=nexara_crm;Username=nexara;Password=nexara"
-      Cors__AllowedOrigins: "http://localhost:8081,http://localhost:19006,http://localhost:3000"
-      # Сид для быстрого входа при docker compose (только если пользователя ещё нет)
-      SeedUser__Username: "ivan"
-      SeedUser__Password: "123456"
-      SeedUser__FullName: "Родненков Иван Сергеевич"
-      SeedUser__Email: "ivan@gmail.com"
     depends_on:
       postgres:
         condition: service_healthy

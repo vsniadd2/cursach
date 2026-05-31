@@ -21,9 +21,8 @@ public sealed class JwtTokenService
         var issuer = _cfg["Jwt:Issuer"] ?? "Nexara";
         var audience = _cfg["Jwt:Audience"] ?? "NexaraClient";
         var secret =
-            _cfg["JWT_SECRET"]
-            ?? _cfg["Jwt:Secret"]
-            ?? "dev-only-secret-change-in-production-please-change-this-key-immediately";
+            _cfg["Jwt:Secret"]
+            ?? "cursach-dev-jwt-secret-key-minimum-32-characters-long";
         var minutes = int.Parse(_cfg["Jwt:AccessTokenMinutes"] ?? "10");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));

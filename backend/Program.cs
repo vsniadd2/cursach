@@ -40,9 +40,8 @@ builder.Services.AddHostedService<IntegrationJobsWorker>();
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "Nexara";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "NexaraClient";
 var jwtSecret =
-    builder.Configuration["JWT_SECRET"]
-    ?? builder.Configuration["Jwt:Secret"]
-    ?? "dev-only-secret-change-in-production-please-change-this-key-immediately";
+    builder.Configuration["Jwt:Secret"]
+    ?? "cursach-dev-jwt-secret-key-minimum-32-characters-long";
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
