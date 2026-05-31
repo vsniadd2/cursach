@@ -21,7 +21,8 @@ Thumbs.db
 
 # Временные файлы
 *.log
-*.tmp
+debug-a07a44.log
+backend/debug-a07a44.log
 __pycache__/
 *.pyc
 

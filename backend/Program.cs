@@ -107,69 +107,66 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Миграции + сид пользователя/тенанта в Development
+// Миграции + сид пользователя/тенанта (если задан SeedUser в конфиге)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ExpogoDbContext>();
 
     await db.Database.MigrateAsync();
 
-    if (app.Environment.IsDevelopment())
+    var seedUsername = builder.Configuration["SeedUser:Username"]?.Trim();
+    var seedPassword = builder.Configuration["SeedUser:Password"];
+    var seedFullName = builder.Configuration["SeedUser:FullName"]?.Trim();
+    var seedEmail = builder.Configuration["SeedUser:Email"]?.Trim();
+
+    if (!string.IsNullOrWhiteSpace(seedUsername) && !string.IsNullOrWhiteSpace(seedPassword))
     {
-        var seedUsername = builder.Configuration["SeedUser:Username"]?.Trim();
-        var seedPassword = builder.Configuration["SeedUser:Password"];
-        var seedFullName = builder.Configuration["SeedUser:FullName"]?.Trim();
-        var seedEmail = builder.Configuration["SeedUser:Email"]?.Trim();
-
-        if (!string.IsNullOrWhiteSpace(seedUsername) && !string.IsNullOrWhiteSpace(seedPassword))
+        var existsByLogin = await db.Users.AnyAsync(x => x.Username == seedUsername);
+        if (existsByLogin)
         {
-            var existsByLogin = await db.Users.AnyAsync(x => x.Username == seedUsername);
-            if (existsByLogin)
+            // уже есть — не перезаписываем
+        }
+        else if (!string.IsNullOrEmpty(seedEmail) && await db.Users.AnyAsync(x => x.Email == seedEmail))
+        {
+            // email занят другим пользователем — пропускаем сид
+        }
+        else
+        {
+            db.Users.Add(new AppUser
             {
-                // уже есть — не перезаписываем
-            }
-            else if (!string.IsNullOrEmpty(seedEmail) && await db.Users.AnyAsync(x => x.Email == seedEmail))
-            {
-                // email занят другим пользователем — пропускаем сид, чтобы не ломать уникальный индекс
-            }
-            else
-            {
-                db.Users.Add(new AppUser
-                {
-                    Username = seedUsername,
-                    FullName = string.IsNullOrEmpty(seedFullName) ? null : seedFullName,
-                    Email = string.IsNullOrEmpty(seedEmail) ? null : seedEmail,
-                    PasswordHash = PasswordHasher.Hash(seedPassword),
-                    UiTheme = "light",
-                    CurrencyCode = "BYN",
-                });
-                await db.SaveChangesAsync();
+                Username = seedUsername,
+                FullName = string.IsNullOrEmpty(seedFullName) ? null : seedFullName,
+                Email = string.IsNullOrEmpty(seedEmail) ? null : seedEmail,
+                PasswordHash = PasswordHasher.Hash(seedPassword),
+                UiTheme = "light",
+                CurrencyCode = "BYN",
+            });
+            await db.SaveChangesAsync();
 
-                var user = await db.Users.SingleAsync(x => x.Username == seedUsername);
-                var tenant = new Tenant
-                {
-                    Name = $"{seedUsername} workspace",
-                    Slug = $"{seedUsername}-{Guid.NewGuid().ToString("N")[..6]}".ToLowerInvariant(),
-                    PlanCode = "starter",
-                };
-                db.Tenants.Add(tenant);
-                await db.SaveChangesAsync();
-                db.TenantMemberships.Add(new TenantMembership
-                {
-                    TenantId = tenant.Id,
-                    UserId = user.Id,
-                    Role = TenantRole.Owner,
-                });
-                db.BillingSubscriptions.Add(new BillingSubscription
-                {
-                    TenantId = tenant.Id,
-                    PlanCode = "starter",
-                    Status = "active",
-                    SeatsLimit = 5,
-                    StorageGbLimit = 5,
-                });
-                await db.SaveChangesAsync();
-            }
+            var user = await db.Users.SingleAsync(x => x.Username == seedUsername);
+            var tenant = new Tenant
+            {
+                Name = $"{seedUsername} workspace",
+                Slug = $"{seedUsername}-{Guid.NewGuid().ToString("N")[..6]}".ToLowerInvariant(),
+                PlanCode = "starter",
+            };
+            db.Tenants.Add(tenant);
+            await db.SaveChangesAsync();
+            db.TenantMemberships.Add(new TenantMembership
+            {
+                TenantId = tenant.Id,
+                UserId = user.Id,
+                Role = TenantRole.Owner,
+            });
+            db.BillingSubscriptions.Add(new BillingSubscription
+            {
+                TenantId = tenant.Id,
+                PlanCode = "starter",
+                Status = "active",
+                SeatsLimit = 5,
+                StorageGbLimit = 5,
+            });
+            await db.SaveChangesAsync();
         }
     }
 }
