@@ -81,7 +81,7 @@ export function AutomationsScreen({ navigation }: Props) {
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
         <Text style={styles.title}>Автоматизации</Text>
-        <Text style={styles.sub}>Правила триггер → действие для tenant.</Text>
+        <Text style={styles.sub}>Правила «триггер → действие» для вашей организации.</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {(data?.items ?? []).map((r) => (

@@ -86,6 +86,9 @@ namespace ExpogoCrm.Api.Migrations
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("FullName")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");

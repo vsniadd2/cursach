@@ -9,6 +9,7 @@ import { AppHeader } from '../components/AppHeader';
 import type { MoreStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { auditActionLabel, entityTypeLabel, formatDateTimeRu } from '../utils/locale';
 
 type AuditResponse = {
   items: Array<{
@@ -83,17 +84,17 @@ export function AuditLogScreen({ navigation }: Props) {
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
         <Text style={styles.title}>Журнал аудита</Text>
-        <Text style={styles.sub}>Кто / что / когда по tenant.</Text>
+        <Text style={styles.sub}>Кто, что и когда изменил в вашей организации.</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {(data?.items ?? []).map((a) => (
           <View key={a.id} style={styles.card}>
             <Text style={styles.rowTitle}>
-              {a.createdAtUtc ? new Date(a.createdAtUtc).toLocaleString() : ''} · {a.action}
+              {a.createdAtUtc ? formatDateTimeRu(a.createdAtUtc) : ''} · {auditActionLabel(a.action)}
             </Text>
             <Text style={styles.rowSub}>
-              {a.entityType} #{a.entityId}
-              {a.userId != null ? ` · user ${a.userId}` : ''}
+              {entityTypeLabel(a.entityType)} #{a.entityId}
+              {a.userId != null ? ` · пользователь ${a.userId}` : ''}
             </Text>
             {a.beforeJson ?? a.afterJson ? (
               <Text style={[styles.rowSub, { marginTop: 6 }]} numberOfLines={6}>

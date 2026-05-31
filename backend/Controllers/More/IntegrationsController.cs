@@ -38,7 +38,7 @@ public class IntegrationsController(ExpogoDbContext db, IAuditTrailService audit
     {
         var tenantId = this.RequireTenantId();
         if (string.IsNullOrWhiteSpace(req.Name) || string.IsNullOrWhiteSpace(req.Url))
-            return BadRequest(new { message = "Заполните имя и URL webhook." });
+            return BadRequest(new { message = "Заполните имя и URL вебхука." });
 
         var hook = new WebhookEndpoint
         {

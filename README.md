@@ -1,6 +1,6 @@
 # cursach
 
-Клиент-серверное CRM-приложение «Экспого»: React Native (Expo) + ASP.NET Core + PostgreSQL.
+Клиент-серверное CRM-приложение **CRM.go**: React Native (Expo) + ASP.NET Core + PostgreSQL.
 
 ## Запуск
 
@@ -13,6 +13,15 @@ npm start
 
 API: http://localhost:5278
 
-Все настройки (БД, JWT, seed-пользователь) захардкожены в `appsettings*.json` и `frontend/scripts/seed.js`. Файлов `.env` в проекте нет.
+## Учётные записи по умолчанию
+
+| Логин | Пароль | Роль |
+|-------|--------|------|
+| `admin` | `123456` | Администратор |
+| `user` | `123456` | Пользователь |
+
+Все пользователи в одной организации. Новая регистрация создаёт обычного пользователя.
+
+Настройки (БД, JWT, seed) — в `appsettings*.json` и `frontend/scripts/seed.js`.
 
 Подробнее — в `start/start.txt`.

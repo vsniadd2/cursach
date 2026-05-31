@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import type { MoreStackParamList } from '../navigation/types';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { confirmAsync } from '../utils/appAlerts';
 
@@ -16,41 +16,49 @@ const ROWS = [
     icon: 'settings' as const,
     label: 'Настройки',
     description: 'Конфигурация приложения, предпочтения пользователя и параметры интерфейса.',
+    adminOnly: false,
   },
   {
     icon: 'people' as const,
-    label: 'Команда',
-    description: 'Список пользователей CRM и распределение ролей по отделу продаж.',
+    label: 'Пользователи',
+    description: 'Список пользователей организации, роли и блокировка доступа.',
+    adminOnly: true,
   },
   {
     icon: 'credit-card' as const,
     label: 'Тариф и лимиты',
     description: 'План подписки, места и лимиты хранилища, учёт использования.',
+    adminOnly: true,
   },
   {
     icon: 'device-hub' as const,
     label: 'Интеграции',
-    description: 'Webhooks и фоновые задачи доставки событий.',
+    description: 'Вебхуки и фоновые задачи доставки событий.',
+    adminOnly: true,
   },
   {
     icon: 'flash-on' as const,
     label: 'Автоматизации',
     description: 'Правила по триггерам CRM и связанные действия.',
+    adminOnly: true,
   },
   {
     icon: 'history' as const,
     label: 'Журнал аудита',
-    description: 'История изменений данных и важных операций по tenant.',
+    description: 'История изменений данных и важных операций.',
+    adminOnly: true,
   },
   {
     icon: 'description' as const,
     label: 'Отчёты',
     description: 'Сводные отчёты по воронке, закрытым сделкам и эффективности менеджеров.',
+    adminOnly: true,
   },
   {
     icon: 'help-outline' as const,
     label: 'Помощь и поддержка',
     description: 'Канал обратной связи, подсказки по работе с системой и FAQ для пользователей.',
+    adminOnly: false,
   },
 ];
 
@@ -126,10 +134,13 @@ type Props = NativeStackScreenProps<MoreStackParamList, 'MoreHome'>;
 
 export function MoreScreen({ navigation }: Props) {
   const colors = useAppColors();
+  const { isAdmin } = useAppPreferences();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const insets = useSafeAreaInsets();
   const bottomPad = 100 + insets.bottom;
   const { signOut } = useAuth();
+
+  const visibleRows = useMemo(() => ROWS.filter((row) => !row.adminOnly || isAdmin), [isAdmin]);
 
   return (
     <View style={styles.root}>
@@ -139,9 +150,9 @@ export function MoreScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.headline}>Ещё</Text>
-        <Text style={styles.sub}>Дополнительные разделы Loop CRM</Text>
+        <Text style={styles.sub}>Дополнительные разделы CRM.go</Text>
         <View style={styles.list}>
-          {ROWS.map((row) => (
+          {visibleRows.map((row) => (
             <Pressable
               key={row.label}
               accessibilityRole="button"
@@ -150,7 +161,7 @@ export function MoreScreen({ navigation }: Props) {
                   navigation.navigate('MoreSettings');
                   return;
                 }
-                if (row.label === 'Команда') {
+                if (row.label === 'Пользователи') {
                   navigation.navigate('MoreTeam');
                   return;
                 }

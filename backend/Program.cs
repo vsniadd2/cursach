@@ -12,6 +12,10 @@ using System.Text.Json.Serialization;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using System.Globalization;
+
+CultureInfo.DefaultThreadCurrentCulture = new CultureInfo("ru-RU");
+CultureInfo.DefaultThreadCurrentUICulture = new CultureInfo("ru-RU");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -107,68 +111,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Миграции + сид пользователя/тенанта (если задан SeedUser в конфиге)
+// Миграции + сид default tenant и пользователей admin/user
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ExpogoDbContext>();
-
     await db.Database.MigrateAsync();
-
-    var seedUsername = builder.Configuration["SeedUser:Username"]?.Trim();
-    var seedPassword = builder.Configuration["SeedUser:Password"];
-    var seedFullName = builder.Configuration["SeedUser:FullName"]?.Trim();
-    var seedEmail = builder.Configuration["SeedUser:Email"]?.Trim();
-
-    if (!string.IsNullOrWhiteSpace(seedUsername) && !string.IsNullOrWhiteSpace(seedPassword))
-    {
-        var existsByLogin = await db.Users.AnyAsync(x => x.Username == seedUsername);
-        if (existsByLogin)
-        {
-            // уже есть — не перезаписываем
-        }
-        else if (!string.IsNullOrEmpty(seedEmail) && await db.Users.AnyAsync(x => x.Email == seedEmail))
-        {
-            // email занят другим пользователем — пропускаем сид
-        }
-        else
-        {
-            db.Users.Add(new AppUser
-            {
-                Username = seedUsername,
-                FullName = string.IsNullOrEmpty(seedFullName) ? null : seedFullName,
-                Email = string.IsNullOrEmpty(seedEmail) ? null : seedEmail,
-                PasswordHash = PasswordHasher.Hash(seedPassword),
-                UiTheme = "light",
-                CurrencyCode = "BYN",
-            });
-            await db.SaveChangesAsync();
-
-            var user = await db.Users.SingleAsync(x => x.Username == seedUsername);
-            var tenant = new Tenant
-            {
-                Name = $"{seedUsername} workspace",
-                Slug = $"{seedUsername}-{Guid.NewGuid().ToString("N")[..6]}".ToLowerInvariant(),
-                PlanCode = "starter",
-            };
-            db.Tenants.Add(tenant);
-            await db.SaveChangesAsync();
-            db.TenantMemberships.Add(new TenantMembership
-            {
-                TenantId = tenant.Id,
-                UserId = user.Id,
-                Role = TenantRole.Owner,
-            });
-            db.BillingSubscriptions.Add(new BillingSubscription
-            {
-                TenantId = tenant.Id,
-                PlanCode = "starter",
-                Status = "active",
-                SeatsLimit = 5,
-                StorageGbLimit = 5,
-            });
-            await db.SaveChangesAsync();
-        }
-    }
+    await DatabaseBootstrap.SeedAsync(db, builder.Configuration);
 }
 
 if (app.Environment.IsDevelopment())

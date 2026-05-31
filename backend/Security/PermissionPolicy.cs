@@ -15,33 +15,23 @@ public sealed class PermissionRequirementHandler(ICurrentTenantAccessor accessor
     private static readonly Dictionary<TenantRole, HashSet<string>> Matrix = new()
     {
         [TenantRole.Owner] = [.. CrmPermissions.All],
-        [TenantRole.Admin] =
-        [
-            CrmPermissions.ClientsRead, CrmPermissions.ClientsWrite, CrmPermissions.DealsRead, CrmPermissions.DealsWrite,
-            CrmPermissions.TasksRead, CrmPermissions.TasksWrite, CrmPermissions.DashboardRead, CrmPermissions.TeamRead,
-            CrmPermissions.TeamWrite, CrmPermissions.ReportsRead, CrmPermissions.SupportRead, CrmPermissions.SupportWrite,
-            CrmPermissions.IntegrationsRead, CrmPermissions.IntegrationsWrite, CrmPermissions.BillingRead, CrmPermissions.BillingWrite, CrmPermissions.AuditRead,
-            CrmPermissions.AutomationsWrite
-        ],
+        [TenantRole.Admin] = [.. CrmPermissions.All],
         [TenantRole.Manager] =
         [
             CrmPermissions.ClientsRead, CrmPermissions.ClientsWrite, CrmPermissions.DealsRead, CrmPermissions.DealsWrite,
             CrmPermissions.TasksRead, CrmPermissions.TasksWrite, CrmPermissions.DashboardRead, CrmPermissions.ReportsRead,
             CrmPermissions.SupportRead, CrmPermissions.SupportWrite,
-            CrmPermissions.IntegrationsRead, CrmPermissions.BillingRead, CrmPermissions.AuditRead
         ],
         [TenantRole.Member] =
         [
             CrmPermissions.ClientsRead, CrmPermissions.ClientsWrite, CrmPermissions.DealsRead, CrmPermissions.DealsWrite,
-            CrmPermissions.TasksRead, CrmPermissions.TasksWrite, CrmPermissions.DashboardRead, CrmPermissions.SupportRead,
-            CrmPermissions.SupportWrite,
-            CrmPermissions.IntegrationsRead, CrmPermissions.BillingRead, CrmPermissions.AuditRead
+            CrmPermissions.TasksRead, CrmPermissions.TasksWrite, CrmPermissions.DashboardRead,
+            CrmPermissions.SupportRead, CrmPermissions.SupportWrite,
         ],
         [TenantRole.Viewer] =
         [
             CrmPermissions.ClientsRead, CrmPermissions.DealsRead, CrmPermissions.TasksRead, CrmPermissions.DashboardRead,
-            CrmPermissions.ReportsRead, CrmPermissions.SupportRead,
-            CrmPermissions.IntegrationsRead, CrmPermissions.BillingRead, CrmPermissions.AuditRead
+            CrmPermissions.SupportRead,
         ],
     };
 

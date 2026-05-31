@@ -11,6 +11,7 @@ import { AppHeader } from '../components/AppHeader';
 import type { DealsStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { dealStageLabel } from '../utils/locale';
 
 type Props = {
   navigation: NativeStackNavigationProp<DealsStackParamList, 'DealEdit'>;
@@ -186,7 +187,7 @@ export function DealEditScreen({ navigation, route }: Props) {
             const active = stage === s;
             return (
               <Pressable key={s} onPress={() => setStage(s)} style={[styles.stagePill, active && styles.stagePillActive]}>
-                <Text style={[styles.stageText, active && styles.stageTextActive]}>{s}</Text>
+                <Text style={[styles.stageText, active && styles.stageTextActive]}>{dealStageLabel(s)}</Text>
               </Pressable>
             );
           })}
@@ -199,7 +200,7 @@ export function DealEditScreen({ navigation, route }: Props) {
         <Text style={styles.label}>Вероятность (%)</Text>
         <TextInput value={prob} onChangeText={setProb} keyboardType="numeric" style={styles.input} />
 
-        <Text style={styles.label}>Ожидаемая дата закрытия (YYYY-MM-DD)</Text>
+        <Text style={styles.label}>Ожидаемая дата закрытия (ГГГГ-ММ-ДД)</Text>
         <TextInput value={expectedClose} onChangeText={setExpectedClose} placeholder="2026-06-01" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} autoCapitalize="none" />
 
         <Text style={styles.label}>ЛПР</Text>

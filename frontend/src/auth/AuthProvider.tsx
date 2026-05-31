@@ -36,17 +36,87 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshInFlight = useRef<Promise<string | null> | null>(null);
 
+  const signOut = useCallback(async () => {
+    refreshInFlight.current = null;
+    await clearTokens();
+    setState({ accessToken: null, refreshToken: null, isHydrating: false });
+  }, []);
+
+  const refreshAccessTokenInternal = useCallback(
+    async (refreshToken: string): Promise<string | null> => {
+      try {
+        const data = await postJson<LoginResponse>(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+        await saveTokens(data);
+        setState({ accessToken: data.accessToken, refreshToken: data.refreshToken, isHydrating: false });
+        return data.accessToken;
+      } catch {
+        await signOut();
+        return null;
+      }
+    },
+    [signOut],
+  );
+
+  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
+    const refreshToken = state.refreshToken;
+    if (!refreshToken) {
+      await signOut();
+      return null;
+    }
+
+    if (!refreshInFlight.current) {
+      refreshInFlight.current = refreshAccessTokenInternal(refreshToken).finally(() => {
+        refreshInFlight.current = null;
+      });
+    }
+
+    return refreshInFlight.current;
+  }, [refreshAccessTokenInternal, signOut, state.refreshToken]);
+
   useEffect(() => {
     let alive = true;
-    loadTokens()
-      .then((t) => {
+
+    (async () => {
+      try {
+        const tokens = await loadTokens();
         if (!alive) return;
-        setState({ accessToken: t.accessToken, refreshToken: t.refreshToken, isHydrating: false });
-      })
-      .catch(() => {
+
+        if (!tokens.refreshToken) {
+          if (tokens.accessToken) {
+            setState({
+              accessToken: tokens.accessToken,
+              refreshToken: null,
+              isHydrating: false,
+            });
+            return;
+          }
+          setState({ accessToken: null, refreshToken: null, isHydrating: false });
+          return;
+        }
+
+        // Проверяем сессию при старте: недействительный refresh → экран входа.
+        try {
+          const data = await postJson<LoginResponse>(`${API_BASE_URL}/auth/refresh`, {
+            refreshToken: tokens.refreshToken,
+          });
+          if (!alive) return;
+          await saveTokens(data);
+          setState({
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            isHydrating: false,
+          });
+        } catch {
+          if (!alive) return;
+          await clearTokens();
+          setState({ accessToken: null, refreshToken: null, isHydrating: false });
+        }
+      } catch {
         if (!alive) return;
         setState({ accessToken: null, refreshToken: null, isHydrating: false });
-      });
+      }
+    })();
+
     return () => {
       alive = false;
     };
@@ -64,35 +134,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await saveTokens(data);
       setState({ accessToken: data.accessToken, refreshToken: data.refreshToken, isHydrating: false });
     },
-    []
+    [],
   );
-
-  const signOut = useCallback(async () => {
-    refreshInFlight.current = null;
-    await clearTokens();
-    setState({ accessToken: null, refreshToken: null, isHydrating: false });
-  }, []);
-
-  const refreshAccessToken = useCallback(async () => {
-    if (!state.refreshToken) return null;
-    const data = await postJson<LoginResponse>(`${API_BASE_URL}/auth/refresh`, {
-      refreshToken: state.refreshToken,
-    });
-    await saveTokens(data);
-    setState({ accessToken: data.accessToken, refreshToken: data.refreshToken, isHydrating: false });
-    return data.accessToken;
-  }, [state.refreshToken]);
 
   const getAccessToken = useCallback(async () => {
     if (state.accessToken) return state.accessToken;
     if (!state.refreshToken) return null;
-
-    if (!refreshInFlight.current) {
-      refreshInFlight.current = refreshAccessToken().finally(() => {
-        refreshInFlight.current = null;
-      });
-    }
-    return await refreshInFlight.current;
+    return await refreshAccessToken();
   }, [refreshAccessToken, state.accessToken, state.refreshToken]);
 
   const fetchWithAuth = useCallback<AuthApi['fetchWithAuth']>(
@@ -104,17 +152,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch(input, { ...init, headers });
       if (res.status !== 401) return res;
 
-      // Access token мог истечь — пытаемся обновить и повторить один раз
-      if (!state.refreshToken) return res;
+      if (!state.refreshToken) {
+        await signOut();
+        return res;
+      }
 
       const newAccess = await refreshAccessToken();
       if (!newAccess) return res;
 
       const headers2 = new Headers(init?.headers ?? {});
       headers2.set('Authorization', `Bearer ${newAccess}`);
-      return await fetch(input, { ...init, headers: headers2 });
+      const retry = await fetch(input, { ...init, headers: headers2 });
+
+      if (retry.status === 401) {
+        await signOut();
+      }
+
+      return retry;
     },
-    [getAccessToken, refreshAccessToken, state.refreshToken]
+    [getAccessToken, refreshAccessToken, signOut, state.refreshToken],
   );
 
   const value = useMemo<AuthApi>(
@@ -126,9 +182,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       getAccessToken,
       fetchWithAuth,
     }),
-    [fetchWithAuth, getAccessToken, signIn, signOut, signUp, state]
+    [fetchWithAuth, getAccessToken, signIn, signOut, signUp, state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

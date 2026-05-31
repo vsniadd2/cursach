@@ -131,7 +131,7 @@ export function ClientEditScreen({ navigation, route }: Props) {
         <TextInput value={fullName} onChangeText={setFullName} placeholder="Иван Иванов" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
 
         <Text style={styles.label}>Компания</Text>
-        <TextInput value={company} onChangeText={setCompany} placeholder="Nexara" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
+        <TextInput value={company} onChangeText={setCompany} placeholder="Acme Corp" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
 
         <Text style={styles.label}>Должность</Text>
         <TextInput value={roleTitle} onChangeText={setRoleTitle} placeholder="Менеджер" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
@@ -150,7 +150,7 @@ export function ClientEditScreen({ navigation, route }: Props) {
         <TextInput
           value={workEmail}
           onChangeText={setWorkEmail}
-          placeholder="name@company.com"
+          placeholder="name@crmgo.local"
           placeholderTextColor={`${colors.onSurfaceVariant}99`}
           keyboardType="email-address"
           autoCapitalize="none"

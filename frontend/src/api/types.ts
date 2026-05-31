@@ -5,6 +5,7 @@ export type AuthMeResponse = {
   email: string | null;
   theme: string;
   currency: string;
+  tenantRole: string;
 };
 
 export type DealStage = 'Lead' | 'Negotiation' | 'Closed';

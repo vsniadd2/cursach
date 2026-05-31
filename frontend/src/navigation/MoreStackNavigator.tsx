@@ -19,7 +19,7 @@ export function MoreStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen component={MoreScreen} name="MoreHome" options={{ title: 'Ещё' }} />
       <Stack.Screen component={SettingsScreen} name="MoreSettings" options={{ title: 'Настройки' }} />
-      <Stack.Screen component={TeamScreen} name="MoreTeam" options={{ title: 'Команда' }} />
+      <Stack.Screen component={TeamScreen} name="MoreTeam" options={{ title: 'Пользователи' }} />
       <Stack.Screen component={ReportsScreen} name="MoreReports" options={{ title: 'Отчёты' }} />
       <Stack.Screen component={BillingScreen} name="MoreBilling" options={{ title: 'Тариф' }} />
       <Stack.Screen component={IntegrationsScreen} name="MoreIntegrations" options={{ title: 'Интеграции' }} />

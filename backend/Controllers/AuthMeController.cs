@@ -56,7 +56,7 @@ public class AuthMeController : ControllerBase
         {
             var t = req.Theme.Trim().ToLowerInvariant();
             if (!AllowedThemes.Contains(t))
-                return BadRequest(new { message = "Недопустимая тема. Используйте light или dark." });
+                return BadRequest(new { message = "Недопустимая тема. Используйте светлая (light) или тёмная (dark)." });
             user.UiTheme = t;
         }
 

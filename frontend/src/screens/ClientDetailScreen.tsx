@@ -13,6 +13,7 @@ import type { ClientDetailResponse } from '../api/types';
 import type { DealsStackParamList } from '../navigation/types';
 import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { formatDateRu } from '../utils/locale';
 
 function timeAgoRu(dtIso: string) {
   const dt = new Date(dtIso);
@@ -219,7 +220,7 @@ export function ClientDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.metaText}>Ожидаемое закрытие</Text>
               </View>
               <Text style={styles.metaRight}>
-                {deal?.expectedCloseDateUtc ? new Date(deal.expectedCloseDateUtc).toLocaleDateString() : '—'}
+                {deal?.expectedCloseDateUtc ? formatDateRu(deal.expectedCloseDateUtc) : '—'}
               </Text>
             </View>
             <View style={[styles.metaRow, styles.metaRowAlt]}>

@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { getJson, patchJson } from '../api/requests';
+import { getJson, patchJson, SessionExpiredError } from '../api/requests';
 import type { AuthMeResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { formatMoneyAmount } from '../utils/formatMoney';
@@ -20,6 +20,8 @@ export type AppPreferencesApi = {
   theme: UiThemeMode;
   currency: string;
   profile: AuthMeResponse | null;
+  tenantRole: string | null;
+  isAdmin: boolean;
   isMeLoading: boolean;
   meError: string | null;
   refreshMe: () => Promise<void>;
@@ -63,6 +65,10 @@ export function AppPreferencesProvider({ children }: { children: React.ReactNode
       if (me.theme === 'dark' || me.theme === 'light') setTheme(me.theme);
       if (me.currency) setCurrency(me.currency.toUpperCase());
     } catch (e) {
+      if (e instanceof SessionExpiredError) {
+        setMeError(null);
+        return;
+      }
       setMeError(e instanceof Error ? e.message : 'Не удалось загрузить профиль');
     } finally {
       setIsMeLoading(false);
@@ -102,19 +108,24 @@ export function AppPreferencesProvider({ children }: { children: React.ReactNode
     void refreshMe();
   }, [auth.state.isHydrating, auth.state.accessToken, auth.state.refreshToken, refreshMe]);
 
+  const tenantRole = profile?.tenantRole ?? null;
+  const isAdmin = tenantRole === 'Admin' || tenantRole === 'Owner';
+
   const value = useMemo<AppPreferencesApi>(
     () => ({
       colors,
       theme,
       currency,
       profile,
+      tenantRole,
+      isAdmin,
       isMeLoading,
       meError,
       refreshMe,
       updatePreferences,
       formatMoney,
     }),
-    [colors, currency, formatMoney, isMeLoading, meError, profile, refreshMe, theme, updatePreferences],
+    [colors, currency, formatMoney, isAdmin, isMeLoading, meError, profile, refreshMe, tenantRole, theme, updatePreferences],
   );
 
   return <AppPreferencesContext.Provider value={value}>{children}</AppPreferencesContext.Provider>;

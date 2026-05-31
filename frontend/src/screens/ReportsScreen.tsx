@@ -78,7 +78,7 @@ export function ReportsScreen({ navigation }: Props) {
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
         <Text style={styles.title}>Отчёты</Text>
-        <Text style={styles.sub}>KPI текущего tenant. Хранение сумм в USD, показ в выбранной валюте профиля.</Text>
+        <Text style={styles.sub}>Показатели вашей организации. Суммы хранятся в USD, в интерфейсе — в валюте профиля.</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {data ? (

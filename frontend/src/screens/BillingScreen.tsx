@@ -9,6 +9,7 @@ import { AppHeader } from '../components/AppHeader';
 import type { MoreStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { formatDateRu, formatDateTimeRu } from '../utils/locale';
 
 type SubscriptionDto = {
   id: number;
@@ -105,8 +106,8 @@ export function BillingScreen({ navigation }: Props) {
             </Text>
             <Text style={[styles.label, { marginTop: 10 }]}>Период</Text>
             <Text style={styles.mono}>
-              {new Date(sub.currentPeriodStartUtc).toLocaleDateString()} —{' '}
-              {new Date(sub.currentPeriodEndUtc).toLocaleDateString()}
+              {formatDateRu(sub.currentPeriodStartUtc)} —{' '}
+              {formatDateRu(sub.currentPeriodEndUtc)}
             </Text>
           </View>
         ) : null}
@@ -115,7 +116,7 @@ export function BillingScreen({ navigation }: Props) {
             <Text style={styles.label}>Метрики (usage)</Text>
             {usage.items.slice(0, 30).map((x) => (
               <Text key={`${x.metricKey}-${x.recordedAtUtc}`} style={styles.mono}>
-                {x.metricKey}: {x.value} @ {new Date(x.recordedAtUtc).toLocaleString()}
+                {x.metricKey}: {x.value} @ {formatDateTimeRu(x.recordedAtUtc)}
               </Text>
             ))}
           </View>

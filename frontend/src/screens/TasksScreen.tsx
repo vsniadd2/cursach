@@ -19,6 +19,7 @@ import type { TasksResponse } from '../api/types';
 import { AppHeader } from '../components/AppHeader';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { taskPriorityLabel } from '../utils/locale';
 import {
   formatMonthYearRu,
   getMondayToFriday,
@@ -192,10 +193,10 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
           {(data?.items ?? []).map((t) => {
             const badge =
               t.priority === 'High'
-                ? { wrap: styles.badgeHigh, text: styles.badgeHighText, label: 'Высокий' }
+                ? { wrap: styles.badgeHigh, text: styles.badgeHighText, label: taskPriorityLabel(t.priority) }
                 : t.priority === 'Medium'
-                  ? { wrap: styles.badgeMed, text: styles.badgeMedText, label: 'Средний' }
-                  : { wrap: styles.badgeLow, text: styles.badgeLowText, label: 'Низкий' };
+                  ? { wrap: styles.badgeMed, text: styles.badgeMedText, label: taskPriorityLabel(t.priority) }
+                  : { wrap: styles.badgeLow, text: styles.badgeLowText, label: taskPriorityLabel(t.priority) };
 
             return (
               <Pressable

@@ -13,17 +13,7 @@ import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext'
 import type { AppPalette } from '../theme/palettes';
 import { getJson, patchJson } from '../api/requests';
 import type { DealsPipelineResponse, DealStage, PipelineDeal } from '../api/types';
-
-function stageLabel(stage: DealStage) {
-  switch (stage) {
-    case 'Lead':
-      return 'Лид';
-    case 'Negotiation':
-      return 'Переговоры';
-    case 'Closed':
-      return 'Закрыто';
-  }
-}
+import { dealStageLabel } from '../utils/locale';
 
 type Props = {
   navigation: NativeStackNavigationProp<DealsStackParamList, 'DealsPipeline'>;
@@ -118,7 +108,7 @@ export function DealsPipelineScreen({ navigation }: Props) {
                 <View style={styles.stageTitleRow}>
                   <View style={[styles.dot, { backgroundColor: dotColor }]} />
                   <Text style={styles.stageTitle}>
-                    {stageLabel(stage)} <Text style={styles.stageCount}>({list.length})</Text>
+                    {dealStageLabel(stage)} <Text style={styles.stageCount}>({list.length})</Text>
                   </Text>
                 </View>
               </View>
@@ -167,7 +157,7 @@ export function DealsPipelineScreen({ navigation }: Props) {
                     </View>
                     <View style={stage === 'Negotiation' ? styles.tagOrange : styles.tagBlue}>
                       <Text style={stage === 'Negotiation' ? styles.tagOrangeText : styles.tagBlueText}>
-                        {stageLabel(stage)}
+                        {dealStageLabel(stage)}
                       </Text>
                     </View>
                   </View>

@@ -22,6 +22,7 @@ import { getJson } from '../api/requests';
 import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { confirmAsync } from '../utils/appAlerts';
+import { greetingByTimeRu } from '../utils/locale';
 import type { DashboardResponse } from '../api/types';
 import type { MainTabParamList } from '../navigation/types';
 
@@ -183,7 +184,7 @@ export function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.greeting}>Доброе утро, {greetingName}</Text>
+          <Text style={styles.greeting}>{greetingByTimeRu()}, {greetingName}</Text>
           <Text style={styles.headline}>Ваш дашборд</Text>
         </View>
 

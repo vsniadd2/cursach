@@ -11,6 +11,7 @@ import type { TasksResponse } from '../api/types';
 import type { RootStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { taskPriorityLabel } from '../utils/locale';
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'TaskEdit'>;
@@ -218,7 +219,7 @@ export function TaskEditScreen({ navigation, route }: Props) {
             const active = priority === p;
             return (
               <Pressable key={p} onPress={() => setPriority(p)} style={[styles.pill, active && styles.pillActive]}>
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{p}</Text>
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>{taskPriorityLabel(p)}</Text>
               </Pressable>
             );
           })}

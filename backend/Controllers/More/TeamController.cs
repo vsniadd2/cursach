@@ -5,6 +5,8 @@ using ExpogoCrm.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace ExpogoCrm.Api.Controllers.More;
 
@@ -13,6 +15,8 @@ namespace ExpogoCrm.Api.Controllers.More;
 [Authorize]
 public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : ControllerBase
 {
+    private static readonly HashSet<TenantRole> AllowedRoles = [TenantRole.Admin, TenantRole.Member];
+
     [HttpGet]
     [Authorize(Policy = CrmPermissions.TeamRead)]
     public async Task<ActionResult<object>> List(CancellationToken ct)
@@ -31,7 +35,9 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : Cont
                 x.User.FullName,
                 x.User.Email,
                 role = x.Role.ToString(),
-                x.CreatedAtUtc
+                x.User.IsBlocked,
+                x.User.LockoutEndUtc,
+                x.CreatedAtUtc,
             })
             .ToListAsync(ct);
         return Ok(new { items = members });
@@ -47,13 +53,81 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : Cont
     [Authorize(Policy = CrmPermissions.TeamWrite)]
     public async Task<ActionResult> UpdateRole([FromBody] UpdateRoleRequest req, CancellationToken ct)
     {
+        if (!AllowedRoles.Contains(req.Role))
+            return BadRequest(new { message = "Допустимые роли: Admin и Member." });
+
         var tenantId = this.RequireTenantId();
+        var actorUserId = ParseUserId(User);
+        if (actorUserId is not null && actorUserId.Value == req.UserId)
+            return BadRequest(new { message = "Нельзя изменить собственную роль." });
+
         var member = await db.TenantMemberships.SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == req.UserId, ct);
         if (member is null) return NotFound(new { message = "Участник не найден" });
+
+        if (member.Role == TenantRole.Admin && req.Role != TenantRole.Admin)
+        {
+            var adminCount = await db.TenantMemberships.CountAsync(
+                x => x.TenantId == tenantId && x.Role == TenantRole.Admin,
+                ct);
+            if (adminCount <= 1)
+                return BadRequest(new { message = "Нельзя снять роль у последнего администратора." });
+        }
+
         var before = member.Role;
         member.Role = req.Role;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(tenantId, "team.update-role", nameof(TenantMembership), member.Id.ToString(), new { role = before }, new { role = req.Role }, ct);
         return NoContent();
+    }
+
+    public sealed class BlockUserRequest
+    {
+        public int UserId { get; set; }
+        public bool Blocked { get; set; }
+    }
+
+    [HttpPatch("block")]
+    [Authorize(Policy = CrmPermissions.TeamWrite)]
+    public async Task<ActionResult> BlockUser([FromBody] BlockUserRequest req, CancellationToken ct)
+    {
+        var tenantId = this.RequireTenantId();
+        var actorUserId = ParseUserId(User);
+        if (actorUserId is not null && actorUserId.Value == req.UserId)
+            return BadRequest(new { message = "Нельзя заблокировать собственный аккаунт." });
+
+        var member = await db.TenantMemberships
+            .Include(x => x.User)
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.UserId == req.UserId, ct);
+        if (member is null) return NotFound(new { message = "Участник не найден" });
+
+        if (req.Blocked && member.Role == TenantRole.Admin)
+        {
+            var adminCount = await db.TenantMemberships.CountAsync(
+                x => x.TenantId == tenantId && x.Role == TenantRole.Admin && !x.User.IsBlocked,
+                ct);
+            if (adminCount <= 1 && !member.User.IsBlocked)
+                return BadRequest(new { message = "Нельзя заблокировать последнего активного администратора." });
+        }
+
+        var before = member.User.IsBlocked;
+        member.User.IsBlocked = req.Blocked;
+        if (req.Blocked)
+        {
+            member.User.LockoutEndUtc = null;
+            member.User.FailedLoginAttempts = 0;
+        }
+
+        await db.SaveChangesAsync(ct);
+        var action = req.Blocked ? "team.block" : "team.unblock";
+        await audit.WriteAsync(tenantId, action, nameof(AppUser), member.UserId.ToString(), new { isBlocked = before }, new { isBlocked = req.Blocked }, ct);
+        return NoContent();
+    }
+
+    private static int? ParseUserId(ClaimsPrincipal user)
+    {
+        var sub =
+            user.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        return int.TryParse(sub, out var id) ? id : null;
     }
 }

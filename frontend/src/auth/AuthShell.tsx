@@ -261,7 +261,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
     return (
       <Text style={[styles.heroTitle, { fontSize: heroTitleFontSize, lineHeight: heroTitleLineHeight }]}>
         Масштабируй{'\n'}продажи с{'\n'}
-        <Text style={{ color: colors.primary }}>Nexara</Text> интеллектом.
+        <Text style={{ color: colors.primary }}>CRM.go</Text>.
       </Text>
     );
   }, [colors.primary, heroTitleFontSize, heroTitleLineHeight, styles.heroTitle]);
@@ -271,7 +271,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
       <View style={[styles.topBar, { height: 72 + insets.top, paddingTop: insets.top }]}>
         <View style={styles.brandRow}>
           <MaterialIcons color={colors.blue700} name="bubble-chart" size={26} />
-          <Text style={styles.brandText}>NEXARA CRM</Text>
+          <Text style={styles.brandText}>CRM.go</Text>
         </View>
       </View>
 
@@ -305,7 +305,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
               <View>
                 {heroTitle}
                 <Text style={[styles.heroSub, { fontSize: heroSubFontSize, lineHeight: heroSubLineHeight }]}>
-                  Nexara — современная CRM для продаж: клиенты, сделки и задачи в одном месте, быстрый поиск и аналитика, безопасная авторизация и надёжное хранение данных. Готова к демо и масштабированию.
+                  CRM.go — современная CRM для продаж: клиенты, сделки и задачи в одном месте, быстрый поиск и аналитика, безопасная авторизация и надёжное хранение данных. Готова к демо и масштабированию.
                 </Text>
               </View>
             </View>

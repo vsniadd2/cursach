@@ -1,8 +1,8 @@
 /* eslint-disable no-console */
 
-/** Захардкожено для учебного проекта (см. SeedUser в backend/appsettings). */
+/** Захардкожено для учебного проекта (см. SeedUsers в backend/appsettings). */
 const API_BASE_URL = 'http://localhost:5278';
-const USERNAME = 'ivan';
+const USERNAME = 'admin';
 const PASSWORD = '123456';
 
 async function postJson(path, body, accessToken) {

@@ -45,8 +45,12 @@ public class AuthController : ControllerBase
         if (!string.IsNullOrEmpty(email))
         {
             var existsEmail = await _db.Users.AnyAsync(x => x.Email == email, ct);
-            if (existsEmail) return Conflict(new { message = "Email уже занят" });
+            if (existsEmail) return Conflict(new { message = "Электронная почта уже занята" });
         }
+
+        var tenant = await DatabaseBootstrap.FindDefaultTenantAsync(_db, _cfg, ct);
+        if (tenant is null)
+            return StatusCode(503, new { message = "Организация по умолчанию не настроена. Перезапустите сервер." });
 
         var user = new AppUser
         {
@@ -57,35 +61,18 @@ public class AuthController : ControllerBase
             UiTheme = "light",
             CurrencyCode = "BYN",
         };
-        var tenantName = string.IsNullOrWhiteSpace(req.FullName) ? $"{username} workspace" : req.FullName!.Trim();
-        var tenant = new Tenant
-        {
-            Name = tenantName,
-            Slug = $"{username}-{Guid.NewGuid().ToString("N")[..6]}".ToLowerInvariant(),
-            PlanCode = "starter",
-        };
         _db.Users.Add(user);
-        _db.Tenants.Add(tenant);
         await _db.SaveChangesAsync(ct);
 
         _db.TenantMemberships.Add(new TenantMembership
         {
             TenantId = tenant.Id,
             UserId = user.Id,
-            Role = TenantRole.Owner,
-        });
-        _db.BillingSubscriptions.Add(new BillingSubscription
-        {
-            TenantId = tenant.Id,
-            PlanCode = "starter",
-            Status = "active",
-            SeatsLimit = 5,
-            StorageGbLimit = 5,
+            Role = TenantRole.Member,
         });
         await _db.SaveChangesAsync(ct);
 
-        // сразу логиним
-        var access = _tokens.CreateAccessToken(user, tenant.Id, TenantRole.Owner);
+        var access = _tokens.CreateAccessToken(user, tenant.Id, TenantRole.Member);
         var refresh = JwtTokenService.CreateRefreshToken();
         var refreshHash = JwtTokenService.HashRefreshToken(refresh);
         var days = int.Parse(_cfg["Jwt:RefreshTokenDays"] ?? "30");
@@ -111,6 +98,9 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(new { message = "Неверный логин или пароль" });
         }
+
+        if (user.IsBlocked)
+            return StatusCode(423, new { message = "Аккаунт заблокирован администратором." });
 
         if (user.LockoutEndUtc is not null && user.LockoutEndUtc > DateTime.UtcNow)
             return StatusCode(423, new { message = "Аккаунт временно заблокирован. Повторите попытку позже." });
@@ -161,11 +151,14 @@ public class AuthController : ControllerBase
             .Include(x => x.User)
             .SingleOrDefaultAsync(x => x.TokenHash == oldHash, ct);
 
-        if (stored is null) return Unauthorized(new { message = "Refresh token не найден" });
-        if (stored.RevokedAtUtc is not null) return Unauthorized(new { message = "Refresh token отозван" });
-        if (stored.ExpiresAtUtc <= DateTime.UtcNow) return Unauthorized(new { message = "Refresh token истёк" });
+        if (stored is null) return Unauthorized(new { message = "Токен обновления не найден" });
+        if (stored.RevokedAtUtc is not null) return Unauthorized(new { message = "Токен обновления отозван" });
+        if (stored.ExpiresAtUtc <= DateTime.UtcNow) return Unauthorized(new { message = "Токен обновления истёк" });
 
         var user = stored.User;
+        if (user.IsBlocked)
+            return StatusCode(423, new { message = "Аккаунт заблокирован администратором." });
+
         var membership = await _db.TenantMemberships.AsNoTracking()
             .Where(x => x.UserId == user.Id)
             .OrderBy(x => x.TenantId)
@@ -192,4 +185,3 @@ public class AuthController : ControllerBase
         return new LoginResponse(newAccess, newRefresh, membership.TenantId);
     }
 }
-

@@ -114,11 +114,11 @@ export function AppHeader({ onNotificationsPress = showNotificationsInfo, onBack
           </Pressable>
         ) : null}
         <Pressable
-          accessibilityLabel="Loop CRM"
+          accessibilityLabel="CRM.go"
           accessibilityRole="button"
           hitSlop={10}
           onPress={() =>
-            Alert.alert('Loop CRM', 'Главный экран и быстрые действия.', [{ text: 'ОК' }])
+            Alert.alert('CRM.go', 'Главный экран и быстрые действия.', [{ text: 'ОК' }])
           }
           style={({ pressed }) => [styles.brand, pressed && styles.pressed]}
         >
@@ -128,10 +128,10 @@ export function AppHeader({ onNotificationsPress = showNotificationsInfo, onBack
             start={{ x: 0, y: 0 }}
             style={styles.mark}
           >
-            <Text style={styles.markText}>L</Text>
+            <Text style={styles.markText}>C</Text>
           </LinearGradient>
           <View style={styles.left}>
-            <Text style={styles.title}>Loop CRM</Text>
+            <Text style={styles.title}>CRM.go</Text>
             <Text style={styles.subtitle}>ваша CRM для бизнеса</Text>
           </View>
         </Pressable>

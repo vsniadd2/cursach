@@ -69,11 +69,11 @@ export function RegisterScreen({ goToLogin }: Props) {
         style={authStyles.input}
       />
 
-      <Text style={authStyles.label}>Email</Text>
+      <Text style={authStyles.label}>Электронная почта</Text>
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
-        placeholder="ivan@nexara.local"
+        placeholder="ivan@crmgo.local"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
         value={email}
         onChangeText={setEmail}

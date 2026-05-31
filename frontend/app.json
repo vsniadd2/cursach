@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Loop CRM",
+    "name": "CRM.go",
     "slug": "frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -24,7 +24,8 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "lang": "ru"
     },
     "plugins": [
       "expo-font"

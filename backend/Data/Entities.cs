@@ -56,6 +56,9 @@ public class AppUser
     public int FailedLoginAttempts { get; set; }
     public DateTime? LockoutEndUtc { get; set; }
 
+    /// <summary>Ручная блокировка администратором.</summary>
+    public bool IsBlocked { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public List<RefreshToken> RefreshTokens { get; set; } = [];

@@ -9,6 +9,7 @@ import { AppHeader } from '../components/AppHeader';
 import type { MoreStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { integrationJobStatusLabel } from '../utils/locale';
 
 type WebhooksResponse = {
   items: Array<{ id: number; name: string; url: string; isActive: boolean; createdAtUtc: string }>;
@@ -91,10 +92,10 @@ export function IntegrationsScreen({ navigation }: Props) {
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
         <Text style={styles.title}>Интеграции</Text>
-        <Text style={styles.sub}>Webhooks и очередь фоновых задач (read-only в мобильном клиенте).</Text>
+        <Text style={styles.sub}>Вебхуки и очередь фоновых задач (только просмотр в мобильном клиенте).</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
-        <Text style={styles.section}>Webhooks</Text>
+        <Text style={styles.section}>Вебхуки</Text>
         {(hooks?.items ?? []).map((h) => (
           <View key={h.id} style={styles.card}>
             <Text style={styles.rowTitle}>
@@ -105,14 +106,14 @@ export function IntegrationsScreen({ navigation }: Props) {
             </Text>
           </View>
         ))}
-        <Text style={styles.section}>Jobs</Text>
+        <Text style={styles.section}>Фоновые задачи</Text>
         {(jobs?.items ?? []).map((j) => (
           <View key={j.id} style={styles.card}>
             <Text style={styles.rowTitle}>
-              #{j.id} {j.jobType} — {j.status}
+              #{j.id} {j.jobType} — {integrationJobStatusLabel(j.status)}
             </Text>
             <Text style={styles.rowSub}>
-              attempts {j.attempts}
+              попыток: {j.attempts}
               {j.lastError ? ` · ${j.lastError}` : ''}
             </Text>
           </View>
