@@ -1,0 +1,31 @@
+# Зависимости и сборки
+node_modules/
+backend/bin/
+backend/obj/
+frontend/.expo/
+frontend/dist/
+frontend/web-build/
+
+# Среда и секреты
+.env
+.env.local
+.env.*.local
+
+# IDE и ОС
+.vs/
+.vscode/
+.idea/
+*.user
+.DS_Store
+Thumbs.db
+
+# Временные файлы
+*.log
+*.tmp
+__pycache__/
+*.pyc
+
+# Резервные копии документов
+*.bak
+KP/_extracted*.txt
+KP/_table_dump*.txt

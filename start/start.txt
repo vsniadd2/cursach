@@ -1,0 +1,33 @@
+ЗАПУСК ПРОЕКТА (кратко)
+
+1) Docker (PostgreSQL + API, ПК)
+   docker compose up -d --build
+   Из корня: expogo-cursach
+   API: http://localhost:5278
+
+2) Backend .NET (ПК, если запускаете без Docker API)
+   cd backend
+   dotnet run
+   API: http://localhost:5278
+
+3) Frontend Expo (ПК → выбор устройства)
+   cd frontend
+   npm start
+
+   Перед стартом выполняется scripts/seed.js (prestart): логин на API и вызов /seed/run.
+   Логин/пароль по умолчанию совпадают с SeedUser в backend (сейчас ivan / 123456).
+   При другом сид-пользователе задайте переменные: SEED_USERNAME, SEED_PASSWORD;
+   при другом хосте API: API_BASE_URL (например http://127.0.0.1:5278).
+
+   • Телефон (iOS/Android): приложение Expo Go, тот же Wi‑Fi что ПК → Scan QR из Expo Go.
+   • Браузер на этом же ПК: npm run web (или в меню Expo клавиша w)
+   • Эмулятор Android: npm run android  (или клавиша a)
+   • Симулятор iOS: только на macOS — npm run ios  (или клавиша i)
+
+Порядок: обычно 1 → 3. Пункт 2 нужен только если API запускается локально без Docker.
+
+База данных: API при старте выполняет `MigrateAsync()` — схема подтягивается из миграций EF. Пустую БД можно поднять одним `docker compose up`. Если том Postgres уже старый и не хватает колонок, выполните `docker compose down -v` и снова `up`, либо примените миграции вручную (`dotnet ef database update` в каталоге backend).
+
+Прод: задайте `JWT_SECRET` (или `Jwt__Secret`) и строку подключения только через секреты/переменные окружения, не коммитьте реальные пароли. Образец полей — `backend/appsettings.Example.json`.
+
+Деньги: суммы сделок в БД в USD; в приложении показываются в валюте профиля (по умолчанию BYN) с демо-курсом к доллару на фронте. Старые демо-данные пересоздайте через `docker compose down -v` и повторный seed, если цифры «поехали».

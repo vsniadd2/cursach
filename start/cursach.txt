@@ -1,0 +1,62 @@
+2.2 Описание таблиц базы данных PostgreSQL (текстом)
+
+Ограничение оформления: в описании каждой таблицы допускается максимум 5 столбцов (5 строк с полями). Поэтому ниже приведены 5 ключевых полей для каждой таблицы; дополнительные поля (если есть) считаются второстепенными.
+
+Таблица Users (пользователи)
+- Id — int — первичный ключ пользователя.
+- Username — string — логин (уникальный).
+- FullName — string (nullable) — имя/ФИО.
+- Email — string (nullable) — электронная почта (уникальная, если указана).
+- PasswordHash — string — хэш пароля.
+
+Таблица RefreshTokens (refresh-токены)
+- Id — int — первичный ключ токена.
+- UserId — int — ссылка на пользователя (Users.Id).
+- TokenHash — string — хэш токена (уникальный).
+- ExpiresAtUtc — datetime — срок действия (UTC).
+- RevokedAtUtc — datetime (nullable) — отметка отзыва токена.
+
+Таблица Clients (клиенты)
+- Id — int — первичный ключ клиента.
+- FullName — string — имя/ФИО клиента.
+- Company — string — компания.
+- RoleTitle — string (nullable) — должность/роль.
+- AvatarSmallUrl — string (nullable) — аватар (мини).
+
+Таблица Deals (сделки)
+- Id — int — первичный ключ сделки.
+- ClientId — int — ссылка на клиента (Clients.Id).
+- Title — string — название сделки.
+- Stage — enum/string — стадия воронки (Lead / Negotiation / Closed).
+- Amount — decimal — сумма сделки.
+
+Таблица Tasks (задачи)
+- Id — int — первичный ключ задачи.
+- Date — date — дата выполнения/планирования.
+- Title — string — название задачи.
+- AssigneeName — string (nullable) — исполнитель (в MVP хранится текстом).
+- Priority — enum/string — приоритет (Low / Medium / High).
+
+Таблица ContactEvents (события контактов с клиентом)
+- Id — int — первичный ключ события.
+- ClientId — int — ссылка на клиента (Clients.Id).
+- Title — string — заголовок события.
+- Body — string (nullable) — описание/текст события.
+- OccurredAtUtc — datetime — когда событие произошло (UTC).
+
+Таблица ActivityEvents (лента активности)
+- Id — int — первичный ключ события.
+- Title — string — заголовок события.
+- Description — string — описание события.
+- AvatarUrl — string (nullable) — ссылка на аватар.
+- BadgeIcon — string (nullable) — значок/метка события.
+
+Связи и ограничения (кратко)
+- Users.Username — уникальный.
+- Users.Email — уникальный (если заполнен).
+- RefreshTokens.TokenHash — уникальный.
+- RefreshTokens.UserId → Users.Id — связь 1 ко многим (при удалении пользователя токены удаляются каскадно).
+- Deals.ClientId → Clients.Id — связь 1 ко многим (при удалении клиента сделки удаляются каскадно).
+- ContactEvents.ClientId → Clients.Id — связь 1 ко многим (при удалении клиента события удаляются каскадно).
+- Индексы для ускорения выборок: по Tasks.Date и Deals.Stage.
+

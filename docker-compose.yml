@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexara-postgres
+    environment:
+      POSTGRES_USER: nexara
+      POSTGRES_PASSWORD: nexara
+      POSTGRES_DB: nexara_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexara -d nexara_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexara-api
+    ports:
+      - "5278:5278"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:5278
+      JWT_SECRET: "change-me-in-production-super-long-secret"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=nexara_crm;Username=nexara;Password=nexara"
+      Cors__AllowedOrigins: "http://localhost:8081,http://localhost:19006,http://localhost:3000"
+      # Сид для быстрого входа при docker compose (только если пользователя ещё нет)
+      SeedUser__Username: "ivan"
+      SeedUser__Password: "123456"
+      SeedUser__FullName: "Родненков Иван Сергеевич"
+      SeedUser__Email: "ivan@gmail.com"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

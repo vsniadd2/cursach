@@ -1,0 +1,119 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
+
+import { AuthPrimaryButton, AuthShell, useAuthFormStyles } from '../auth/AuthShell';
+import { useAuth } from '../auth/AuthContext';
+import { useAppColors } from '../theme/AppPreferencesContext';
+
+type Props = {
+  goToLogin: () => void;
+};
+
+export function RegisterScreen({ goToLogin }: Props) {
+  const colors = useAppColors();
+  const authStyles = useAuthFormStyles();
+  const { signUp } = useAuth();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = async () => {
+    if (loading) return;
+    setError(null);
+    const u = username.trim();
+    if (!u) return setError('Введите логин');
+    if (password.length < 6) return setError('Пароль минимум 6 символов');
+    if (password !== confirm) return setError('Пароли не совпадают');
+
+    setLoading(true);
+    try {
+      await signUp({
+        username: u,
+        password,
+        fullName: fullName.trim() || undefined,
+        email: email.trim() || undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка регистрации');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthShell
+      title="Создать аккаунт"
+      subtitle="Регистрация для доступа к CRM"
+      footer={
+        <>
+          <View style={authStyles.linkRow}>
+            <Text style={authStyles.linkText}>Уже есть аккаунт?</Text>
+            <Pressable accessibilityRole="button" onPress={goToLogin}>
+              <Text style={authStyles.linkStrong}>Войти</Text>
+            </Pressable>
+          </View>
+        </>
+      }
+    >
+      <Text style={authStyles.label}>ФИО</Text>
+      <TextInput
+        placeholder="Иван Иванов"
+        placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        value={fullName}
+        onChangeText={setFullName}
+        style={authStyles.input}
+      />
+
+      <Text style={authStyles.label}>Email</Text>
+      <TextInput
+        autoCapitalize="none"
+        keyboardType="email-address"
+        placeholder="ivan@nexara.local"
+        placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        value={email}
+        onChangeText={setEmail}
+        style={authStyles.input}
+      />
+
+      <Text style={authStyles.label}>Логин</Text>
+      <TextInput
+        autoCapitalize="none"
+        placeholder="ivan"
+        placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        value={username}
+        onChangeText={setUsername}
+        style={authStyles.input}
+      />
+
+      <Text style={authStyles.label}>Пароль</Text>
+      <TextInput
+        secureTextEntry
+        placeholder="••••••••"
+        placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        value={password}
+        onChangeText={setPassword}
+        style={authStyles.input}
+      />
+
+      <Text style={authStyles.label}>Подтверждение пароля</Text>
+      <TextInput
+        secureTextEntry
+        placeholder="••••••••"
+        placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        value={confirm}
+        onChangeText={setConfirm}
+        style={authStyles.input}
+      />
+
+      {error ? <Text style={authStyles.error}>{error}</Text> : null}
+
+      <AuthPrimaryButton label="Зарегистрироваться" loading={loading} onPress={onSubmit} />
+    </AuthShell>
+  );
+}
+
