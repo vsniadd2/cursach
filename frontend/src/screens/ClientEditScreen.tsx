@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { deleteJson, getJson, postJson, putJson } from '../api/requests';
 import type { ClientDetailResponse } from '../api/types';
 import { AppHeader } from '../components/AppHeader';
+import { APP_EMAIL_DOMAIN } from '../constants/brand';
 import type { ClientsStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
@@ -150,7 +151,7 @@ export function ClientEditScreen({ navigation, route }: Props) {
         <TextInput
           value={workEmail}
           onChangeText={setWorkEmail}
-          placeholder="name@crmgo.local"
+          placeholder={`name@${APP_EMAIL_DOMAIN}`}
           placeholderTextColor={`${colors.onSurfaceVariant}99`}
           keyboardType="email-address"
           autoCapitalize="none"

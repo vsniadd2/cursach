@@ -383,3 +383,35 @@ public class SupportTicket
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
+public class UserNotification
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public Tenant Tenant { get; set; } = null!;
+
+    public int UserId { get; set; }
+    public AppUser User { get; set; } = null!;
+
+    [MaxLength(48)]
+    public required string Type { get; set; }
+
+    [MaxLength(160)]
+    public required string Title { get; set; }
+
+    [MaxLength(512)]
+    public required string Body { get; set; }
+
+    [MaxLength(64)]
+    public string? EntityType { get; set; }
+
+    [MaxLength(64)]
+    public string? EntityId { get; set; }
+
+    [MaxLength(128)]
+    public string? DedupeKey { get; set; }
+
+    public bool IsRead { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+

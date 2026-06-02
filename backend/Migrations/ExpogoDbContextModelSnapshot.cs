@@ -520,6 +520,62 @@ namespace ExpogoCrm.Api.Migrations
                     b.ToTable("SupportTickets");
                 });
 
+            modelBuilder.Entity("ExpogoCrm.Api.Data.UserNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DedupeKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAtUtc");
+
+                    b.HasIndex("TenantId", "UserId", "DedupeKey");
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("ExpogoCrm.Api.Data.TaskItem", b =>
                 {
                     b.Property<int>("Id")
@@ -820,6 +876,25 @@ namespace ExpogoCrm.Api.Migrations
                 });
 
             modelBuilder.Entity("ExpogoCrm.Api.Data.SupportTicket", b =>
+                {
+                    b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExpogoCrm.Api.Data.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ExpogoCrm.Api.Data.UserNotification", b =>
                 {
                     b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
                         .WithMany()

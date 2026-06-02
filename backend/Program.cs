@@ -37,6 +37,7 @@ builder.Services.AddDbContext<ExpogoDbContext>(options =>
 
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantAccessor, CurrentTenantAccessor>();
 builder.Services.AddHostedService<IntegrationJobsWorker>();

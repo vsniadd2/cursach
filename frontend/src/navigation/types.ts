@@ -43,6 +43,7 @@ export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   App: NavigatorScreenParams<MainTabParamList>;
   TaskEdit: { taskId?: number } | undefined;
+  Notifications: undefined;
 };
 
 declare global {

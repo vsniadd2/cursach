@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
+import { APP_NAME } from '../constants/brand';
 import type { MoreStackParamList } from '../navigation/types';
 import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
@@ -150,7 +151,7 @@ export function MoreScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.headline}>Ещё</Text>
-        <Text style={styles.sub}>Дополнительные разделы CRM.go</Text>
+        <Text style={styles.sub}>Дополнительные разделы {APP_NAME}</Text>
         <View style={styles.list}>
           {visibleRows.map((row) => (
             <Pressable

@@ -4,7 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { AuthPrimaryButton, AuthShell, useAuthFormStyles } from '../auth/AuthShell';
 import { useAuth } from '../auth/AuthContext';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { APP_NAME, APP_EMAIL_DOMAIN } from '../constants/brand';
 
 type Props = {
   goToLogin: () => void;
@@ -48,7 +48,7 @@ export function RegisterScreen({ goToLogin }: Props) {
   return (
     <AuthShell
       title="Создать аккаунт"
-      subtitle="Регистрация для доступа к CRM"
+      subtitle={`Регистрация для доступа к ${APP_NAME}`}
       footer={
         <>
           <View style={authStyles.linkRow}>
@@ -73,7 +73,7 @@ export function RegisterScreen({ goToLogin }: Props) {
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
-        placeholder="ivan@crmgo.local"
+        placeholder={`ivan@${APP_EMAIL_DOMAIN}`}
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
         value={email}
         onChangeText={setEmail}

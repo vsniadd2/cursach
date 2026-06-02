@@ -4,9 +4,11 @@ import { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { APP_NAME } from '../constants/brand';
+import { useOpenNotifications } from '../navigation/useOpenNotifications';
+import { useNotifications } from '../notifications/NotificationsContext';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
-import { showNotificationsInfo } from '../utils/appAlerts';
 
 type AppHeaderProps = {
   onNotificationsPress?: () => void;
@@ -88,16 +90,45 @@ function createStyles(colors: AppPalette) {
       alignItems: 'center',
       justifyContent: 'center',
     },
+    bellWrap: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badge: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      paddingHorizontal: 4,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.error,
+      borderWidth: 2,
+      borderColor: colors.surfaceContainerLow,
+    },
+    badgeText: {
+      fontSize: 10,
+      fontWeight: '900',
+      color: colors.onError,
+    },
     pressed: {
       opacity: 0.8,
     },
   });
 }
 
-export function AppHeader({ onNotificationsPress = showNotificationsInfo, onBackPress }: AppHeaderProps) {
+export function AppHeader({ onNotificationsPress, onBackPress }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const colors = useAppColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const openNotifications = useOpenNotifications();
+  const { unreadCount } = useNotifications();
+  const onBellPress = onNotificationsPress ?? openNotifications;
+  const badgeLabel = unreadCount > 9 ? '9+' : String(unreadCount);
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
@@ -114,11 +145,11 @@ export function AppHeader({ onNotificationsPress = showNotificationsInfo, onBack
           </Pressable>
         ) : null}
         <Pressable
-          accessibilityLabel="CRM.go"
+          accessibilityLabel={APP_NAME}
           accessibilityRole="button"
           hitSlop={10}
           onPress={() =>
-            Alert.alert('CRM.go', 'Главный экран и быстрые действия.', [{ text: 'ОК' }])
+            Alert.alert(APP_NAME, 'Главный экран и быстрые действия.', [{ text: 'ОК' }])
           }
           style={({ pressed }) => [styles.brand, pressed && styles.pressed]}
         >
@@ -128,21 +159,32 @@ export function AppHeader({ onNotificationsPress = showNotificationsInfo, onBack
             start={{ x: 0, y: 0 }}
             style={styles.mark}
           >
-            <Text style={styles.markText}>C</Text>
+            <Text style={styles.markText}>Э</Text>
           </LinearGradient>
           <View style={styles.left}>
-            <Text style={styles.title}>CRM.go</Text>
-            <Text style={styles.subtitle}>ваша CRM для бизнеса</Text>
+            <Text style={styles.title}>{APP_NAME}</Text>
+            <Text style={styles.subtitle}>клиенты, сделки и задачи</Text>
           </View>
         </Pressable>
         <Pressable
-          accessibilityLabel="Уведомления"
+          accessibilityLabel={unreadCount > 0 ? `Уведомления, ${unreadCount} непрочитанных` : 'Уведомления'}
           accessibilityRole="button"
           hitSlop={12}
-          onPress={onNotificationsPress}
+          onPress={onBellPress}
           style={({ pressed }) => [styles.iconBtn, pressed && { opacity: 0.7 }]}
         >
-          <MaterialIcons color={colors.slate600} name="notifications-none" size={24} />
+          <View style={styles.bellWrap}>
+            <MaterialIcons
+              color={colors.slate600}
+              name={unreadCount > 0 ? 'notifications' : 'notifications-none'}
+              size={24}
+            />
+            {unreadCount > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{badgeLabel}</Text>
+              </View>
+            ) : null}
+          </View>
         </Pressable>
       </View>
     </View>

@@ -108,3 +108,28 @@ export type ClientDetailResponse = {
   }>;
 };
 
+export type NotificationType =
+  | 'TaskOverdue'
+  | 'TaskDueToday'
+  | 'TaskHighPriority'
+  | 'DealStageChanged'
+  | 'DealClosingSoon'
+  | 'TeamRoleChanged'
+  | 'TeamBlocked';
+
+export type NotificationItem = {
+  id: number;
+  type: NotificationType;
+  title: string;
+  body: string;
+  entityType: string | null;
+  entityId: string | null;
+  isRead: boolean;
+  createdAtUtc: string;
+};
+
+export type NotificationsResponse = {
+  unreadCount: number;
+  items: NotificationItem[];
+};
+

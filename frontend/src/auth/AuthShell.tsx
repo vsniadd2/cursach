@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { APP_NAME } from '../constants/brand';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { useWebIphonePreview } from '../web/WebIphonePreviewContext';
@@ -261,7 +262,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
     return (
       <Text style={[styles.heroTitle, { fontSize: heroTitleFontSize, lineHeight: heroTitleLineHeight }]}>
         Масштабируй{'\n'}продажи с{'\n'}
-        <Text style={{ color: colors.primary }}>CRM.go</Text>.
+        <Text style={{ color: colors.primary }}>{APP_NAME}</Text>.
       </Text>
     );
   }, [colors.primary, heroTitleFontSize, heroTitleLineHeight, styles.heroTitle]);
@@ -271,7 +272,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
       <View style={[styles.topBar, { height: 72 + insets.top, paddingTop: insets.top }]}>
         <View style={styles.brandRow}>
           <MaterialIcons color={colors.blue700} name="bubble-chart" size={26} />
-          <Text style={styles.brandText}>CRM.go</Text>
+          <Text style={styles.brandText}>{APP_NAME}</Text>
         </View>
       </View>
 
@@ -305,7 +306,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
               <View>
                 {heroTitle}
                 <Text style={[styles.heroSub, { fontSize: heroSubFontSize, lineHeight: heroSubLineHeight }]}>
-                  CRM.go — современная CRM для продаж: клиенты, сделки и задачи в одном месте, быстрый поиск и аналитика, безопасная авторизация и надёжное хранение данных. Готова к демо и масштабированию.
+                  {APP_NAME} — современная CRM для продаж: клиенты, сделки и задачи в одном месте, быстрый поиск и аналитика, безопасная авторизация и надёжное хранение данных. Готова к демо и масштабированию.
                 </Text>
               </View>
             </View>

@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/auth/AuthProvider';
+import { NotificationsProvider } from './src/notifications/NotificationsContext';
 import { BrandedSplash } from './src/components/BrandedSplash';
 import { AppPreferencesProvider, useAppPreferences } from './src/theme/AppPreferencesContext';
 import { Iphone16ProFrame } from './src/web/Iphone16ProFrame';
@@ -51,15 +52,17 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <AppPreferencesProvider>
-          <ThemedChrome>
-            {Platform.OS === 'web' ? (
-              <Iphone16ProFrame>
+          <NotificationsProvider>
+            <ThemedChrome>
+              {Platform.OS === 'web' ? (
+                <Iphone16ProFrame>
+                  <RootNavigator />
+                </Iphone16ProFrame>
+              ) : (
                 <RootNavigator />
-              </Iphone16ProFrame>
-            ) : (
-              <RootNavigator />
-            )}
-          </ThemedChrome>
+              )}
+            </ThemedChrome>
+          </NotificationsProvider>
         </AppPreferencesProvider>
       </AuthProvider>
     </SafeAreaProvider>

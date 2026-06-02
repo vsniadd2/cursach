@@ -16,11 +16,20 @@ public class DealsController : ControllerBase
 {
     private readonly ExpogoDbContext _db;
     private readonly IAuditTrailService _audit;
+    private readonly INotificationService _notifications;
+    private readonly ICurrentTenantAccessor _current;
 
-    public DealsController(ExpogoDbContext db, IAuditTrailService audit)
+    public DealsController(
+        ExpogoDbContext db,
+        IAuditTrailService audit,
+        INotificationService notifications,
+        ICurrentTenantAccessor current
+    )
     {
         _db = db;
         _audit = audit;
+        _notifications = notifications;
+        _current = current;
     }
 
     public record DealListItem(
@@ -269,6 +278,17 @@ public class DealsController : ControllerBase
         }
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "deals.stage", nameof(Deal), deal.Id.ToString(), new { Stage = before }, new { Stage = req.Stage }, ct);
+        await _notifications.NotifyTenantExceptAsync(
+            tenantId,
+            _current.UserId,
+            NotificationTypes.DealStageChanged,
+            "Смена стадии сделки",
+            $"«{deal.Title}» → {DealStageLabelRu(req.Stage)}",
+            nameof(Deal),
+            deal.Id.ToString(),
+            $"deal-stage:{deal.Id}:{req.Stage}",
+            ct
+        );
         return NoContent();
     }
 
@@ -387,5 +407,13 @@ public class DealsController : ControllerBase
             _ => false
         };
     }
+
+    private static string DealStageLabelRu(DealStage stage) => stage switch
+    {
+        DealStage.Lead => "Лид",
+        DealStage.Negotiation => "Переговоры",
+        DealStage.Closed => "Закрыто",
+        _ => stage.ToString(),
+    };
 }
 

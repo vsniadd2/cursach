@@ -17,10 +17,21 @@ public static class DatabaseBootstrap
 {
     public static async Task SeedAsync(ExpogoDbContext db, IConfiguration configuration, CancellationToken ct = default)
     {
-        var tenantName = configuration["DefaultTenant:Name"]?.Trim() ?? "CRM.go";
-        var tenantSlug = configuration["DefaultTenant:Slug"]?.Trim() ?? "crmgo";
+        var tenantName = configuration["DefaultTenant:Name"]?.Trim() ?? "Экспого";
+        var tenantSlug = configuration["DefaultTenant:Slug"]?.Trim() ?? "expogo";
 
         var tenant = await db.Tenants.SingleOrDefaultAsync(x => x.Slug == tenantSlug, ct);
+        if (tenant is null)
+        {
+            tenant = await db.Tenants.SingleOrDefaultAsync(x => x.Slug == "crmgo", ct);
+            if (tenant is not null)
+            {
+                tenant.Slug = tenantSlug;
+                tenant.Name = tenantName;
+                await db.SaveChangesAsync(ct);
+            }
+        }
+
         if (tenant is null)
         {
             tenant = new Tenant
@@ -30,6 +41,11 @@ public static class DatabaseBootstrap
                 PlanCode = "starter",
             };
             db.Tenants.Add(tenant);
+            await db.SaveChangesAsync(ct);
+        }
+        else if (tenant.Name != tenantName)
+        {
+            tenant.Name = tenantName;
             await db.SaveChangesAsync(ct);
         }
 
@@ -97,7 +113,7 @@ public static class DatabaseBootstrap
 
     public static async Task<Tenant?> FindDefaultTenantAsync(ExpogoDbContext db, IConfiguration configuration, CancellationToken ct = default)
     {
-        var tenantSlug = configuration["DefaultTenant:Slug"]?.Trim() ?? "crmgo";
+        var tenantSlug = configuration["DefaultTenant:Slug"]?.Trim() ?? "expogo";
         return await db.Tenants.SingleOrDefaultAsync(x => x.Slug == tenantSlug, ct);
     }
 }

@@ -83,6 +83,7 @@ export function entityTypeLabel(entityType: string): string {
     Client: 'Клиент',
     Deal: 'Сделка',
     Task: 'Задача',
+    TaskItem: 'Задача',
     WebhookEndpoint: 'Webhook',
     IntegrationJob: 'Фоновая задача',
   };
@@ -102,4 +103,38 @@ export function integrationJobStatusLabel(status: string): string {
     default:
       return status;
   }
+}
+
+export function notificationIcon(type: string): 'assignment-late' | 'today' | 'priority-high' | 'sync-alt' | 'event' | 'admin-panel-settings' | 'block' | 'notifications' {
+  switch (type) {
+    case 'TaskOverdue':
+      return 'assignment-late';
+    case 'TaskDueToday':
+      return 'today';
+    case 'TaskHighPriority':
+      return 'priority-high';
+    case 'DealStageChanged':
+      return 'sync-alt';
+    case 'DealClosingSoon':
+      return 'event';
+    case 'TeamRoleChanged':
+      return 'admin-panel-settings';
+    case 'TeamBlocked':
+      return 'block';
+    default:
+      return 'notifications';
+  }
+}
+
+export function relativeTimeRu(value: Date | string | number): string {
+  const d = value instanceof Date ? value : new Date(value);
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  if (mins < 1) return 'только что';
+  if (mins < 60) return `${mins} мин. назад`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} ч. назад`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} дн. назад`;
+  return formatDateRu(d);
 }

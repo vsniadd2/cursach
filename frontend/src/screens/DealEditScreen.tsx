@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext';
 import { deleteJson, getJson, postJson, putJson } from '../api/requests';
 import type { ClientsListResponse, DealStage } from '../api/types';
 import { AppHeader } from '../components/AppHeader';
+import { DatePickerField } from '../components/DatePickerField';
 import type { DealsStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
@@ -109,7 +110,7 @@ export function DealEditScreen({ navigation, route }: Props) {
       stage,
       amount: Number(amount) || 0,
       probabilityPct: Math.max(0, Math.min(100, Number(prob) || 0)),
-      expectedCloseDateUtc: expectedClose ? new Date(expectedClose).toISOString() : null,
+      expectedCloseDateUtc: expectedClose ? `${expectedClose}T12:00:00.000Z` : null,
       decisionMaker: decisionMaker.trim() || null,
     };
 
@@ -200,8 +201,8 @@ export function DealEditScreen({ navigation, route }: Props) {
         <Text style={styles.label}>Вероятность (%)</Text>
         <TextInput value={prob} onChangeText={setProb} keyboardType="numeric" style={styles.input} />
 
-        <Text style={styles.label}>Ожидаемая дата закрытия (ГГГГ-ММ-ДД)</Text>
-        <TextInput value={expectedClose} onChangeText={setExpectedClose} placeholder="2026-06-01" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} autoCapitalize="none" />
+        <Text style={styles.label}>Ожидаемая дата закрытия</Text>
+        <DatePickerField value={expectedClose} onChange={setExpectedClose} placeholder="Выберите дату" />
 
         <Text style={styles.label}>ЛПР</Text>
         <TextInput value={decisionMaker} onChangeText={setDecisionMaker} placeholder="Иван И." placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />

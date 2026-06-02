@@ -16,11 +16,20 @@ public class TasksController : ControllerBase
 {
     private readonly ExpogoDbContext _db;
     private readonly IAuditTrailService _audit;
+    private readonly INotificationService _notifications;
+    private readonly ICurrentTenantAccessor _current;
 
-    public TasksController(ExpogoDbContext db, IAuditTrailService audit)
+    public TasksController(
+        ExpogoDbContext db,
+        IAuditTrailService audit,
+        INotificationService notifications,
+        ICurrentTenantAccessor current
+    )
     {
         _db = db;
         _audit = audit;
+        _notifications = notifications;
+        _current = current;
     }
 
     public class TaskUpsertRequest
@@ -141,6 +150,20 @@ public class TasksController : ControllerBase
         _db.Tasks.Add(item);
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "tasks.create", nameof(TaskItem), item.Id.ToString(), null, item, ct);
+        if (item.Priority == TaskPriority.High)
+        {
+            await _notifications.NotifyTenantExceptAsync(
+                tenantId,
+                _current.UserId,
+                NotificationTypes.TaskHighPriority,
+                "Новая срочная задача",
+                $"«{item.Title}» — {item.Date:dd.MM.yyyy}",
+                nameof(TaskItem),
+                item.Id.ToString(),
+                $"task-high:{item.Id}",
+                ct
+            );
+        }
         return CreatedAtAction(nameof(GetOne), new { id = item.Id }, new { id = item.Id });
     }
 

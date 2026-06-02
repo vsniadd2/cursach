@@ -4,7 +4,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { AuthPrimaryButton, AuthShell, useAuthFormStyles } from '../auth/AuthShell';
 import { useAuth } from '../auth/AuthContext';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { APP_NAME } from '../constants/brand';
 
 type Props = {
   goToRegister: () => void;
@@ -35,7 +35,7 @@ export function LoginScreen({ goToRegister }: Props) {
   return (
     <AuthShell
       title="Вход"
-      subtitle="Авторизация перед доступом к CRM"
+      subtitle={`Авторизация перед доступом к ${APP_NAME}`}
       footer={
         <>
           <View style={authStyles.linkRow}>

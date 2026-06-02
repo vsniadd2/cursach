@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getJson, patchJson } from '../api/requests';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
+import { APP_NAME } from '../constants/brand';
 import type { MoreStackParamList } from '../navigation/types';
 import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
@@ -146,7 +147,7 @@ export function TeamScreen({ navigation }: Props) {
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
         <Text style={styles.title}>Пользователи</Text>
-        <Text style={styles.sub}>Управление ролями и доступом в организации CRM.go.</Text>
+        <Text style={styles.sub}>Управление ролями и доступом в организации {APP_NAME}.</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {items.map((m) => (

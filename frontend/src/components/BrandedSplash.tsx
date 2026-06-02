@@ -3,6 +3,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { APP_NAME } from '../constants/brand';
+
 import { lightColors } from '../theme/palettes';
 
 const MIN_VISIBLE_MS = 1700;
@@ -228,8 +230,7 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
         </Animated.View>
 
         <Animated.View style={[styles.titleWrap, { opacity: titleEnter, transform: [{ translateY: titleEnter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }]}>
-          <Text style={styles.title}>CRM</Text>
-          <Text style={styles.titleAccent}>.go</Text>
+          <Text style={styles.title}>{APP_NAME}</Text>
         </Animated.View>
 
         <Animated.Text style={[styles.tagline, { opacity: tagEnter, transform: [{ translateY: tagEnter.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>

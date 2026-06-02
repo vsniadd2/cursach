@@ -1,6 +1,6 @@
 # cursach
 
-Клиент-серверное CRM-приложение **CRM.go**: React Native (Expo) + ASP.NET Core + PostgreSQL.
+Клиент-серверное CRM-приложение **Экспого**: React Native (Expo) + ASP.NET Core + PostgreSQL.
 
 ## Запуск
 

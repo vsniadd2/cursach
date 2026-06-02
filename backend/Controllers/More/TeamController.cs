@@ -13,7 +13,7 @@ namespace ExpogoCrm.Api.Controllers.More;
 [ApiController]
 [Route("team")]
 [Authorize]
-public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : ControllerBase
+public class TeamController(ExpogoDbContext db, IAuditTrailService audit, INotificationService notifications) : ControllerBase
 {
     private static readonly HashSet<TenantRole> AllowedRoles = [TenantRole.Admin, TenantRole.Member];
 
@@ -77,6 +77,17 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : Cont
         member.Role = req.Role;
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(tenantId, "team.update-role", nameof(TenantMembership), member.Id.ToString(), new { role = before }, new { role = req.Role }, ct);
+        await notifications.NotifyUserAsync(
+            tenantId,
+            req.UserId,
+            NotificationTypes.TeamRoleChanged,
+            "Изменена роль",
+            $"Ваша роль в организации: {TenantRoleLabelRu(req.Role)}",
+            nameof(TenantMembership),
+            member.Id.ToString(),
+            $"team-role:{req.UserId}:{req.Role}",
+            ct
+        );
         return NoContent();
     }
 
@@ -120,6 +131,19 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : Cont
         await db.SaveChangesAsync(ct);
         var action = req.Blocked ? "team.block" : "team.unblock";
         await audit.WriteAsync(tenantId, action, nameof(AppUser), member.UserId.ToString(), new { isBlocked = before }, new { isBlocked = req.Blocked }, ct);
+        await notifications.NotifyUserAsync(
+            tenantId,
+            req.UserId,
+            req.Blocked ? NotificationTypes.TeamBlocked : NotificationTypes.TeamRoleChanged,
+            req.Blocked ? "Аккаунт заблокирован" : "Аккаунт разблокирован",
+            req.Blocked
+                ? "Администратор ограничил доступ к Экспого. Обратитесь к администратору."
+                : "Доступ к Экспого восстановлен.",
+            nameof(AppUser),
+            member.UserId.ToString(),
+            $"team-block:{req.UserId}:{req.Blocked}",
+            ct
+        );
         return NoContent();
     }
 
@@ -130,4 +154,13 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit) : Cont
             ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
         return int.TryParse(sub, out var id) ? id : null;
     }
+
+    private static string TenantRoleLabelRu(TenantRole role) => role switch
+    {
+        TenantRole.Admin => "Администратор",
+        TenantRole.Member => "Пользователь",
+        TenantRole.Owner => "Владелец",
+        TenantRole.Viewer => "Наблюдатель",
+        _ => role.ToString(),
+    };
 }

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthContext';
 import { deleteJson, getJson, postJson, putJson } from '../api/requests';
 import { AppHeader } from '../components/AppHeader';
+import { DatePickerField } from '../components/DatePickerField';
 import type { TasksResponse } from '../api/types';
 import type { RootStackParamList } from '../navigation/types';
 import { useAppColors } from '../theme/AppPreferencesContext';
@@ -184,8 +185,8 @@ export function TaskEditScreen({ navigation, route }: Props) {
         <Text style={styles.title}>{isEdit ? 'Редактировать задачу' : 'Новая задача'}</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <Text style={styles.label}>Дата (YYYY-MM-DD)</Text>
-        <TextInput value={date} onChangeText={setDate} autoCapitalize="none" style={styles.input} />
+        <Text style={styles.label}>Дата</Text>
+        <DatePickerField value={date} onChange={setDate} placeholder="Выберите дату" allowClear={false} />
 
         <Text style={styles.label}>Название</Text>
         <TextInput value={title} onChangeText={setTitle} style={styles.input} />

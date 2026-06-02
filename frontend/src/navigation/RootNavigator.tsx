@@ -11,6 +11,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { TasksScreen } from '../screens/TasksScreen';
 import { TaskEditScreen } from '../screens/TaskEditScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { useAppPreferences } from '../theme/AppPreferencesContext';
 import { ClientsStackNavigator } from './ClientsStackNavigator';
 import { DealsStackNavigator } from './DealsStackNavigator';
@@ -79,6 +80,7 @@ export function RootNavigator() {
             <>
               <RootStack.Screen component={AppTabs} name="App" />
               <RootStack.Screen component={TaskEditScreen as any} name="TaskEdit" />
+              <RootStack.Screen component={NotificationsScreen} name="Notifications" />
             </>
           ) : (
             <RootStack.Screen component={AuthFlow} name="Auth" />

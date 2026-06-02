@@ -25,6 +25,7 @@ public class ExpogoDbContext : DbContext
     public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
     public DbSet<UsageMetric> UsageMetrics => Set<UsageMetric>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -157,5 +158,23 @@ public class ExpogoDbContext : DbContext
 
         modelBuilder.Entity<SupportTicket>()
             .HasIndex(x => new { x.TenantId, x.Status, x.CreatedAtUtc });
+
+        modelBuilder.Entity<UserNotification>()
+            .HasOne(x => x.Tenant)
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserNotification>()
+            .HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserNotification>()
+            .HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAtUtc });
+
+        modelBuilder.Entity<UserNotification>()
+            .HasIndex(x => new { x.TenantId, x.UserId, x.DedupeKey });
     }
 }
