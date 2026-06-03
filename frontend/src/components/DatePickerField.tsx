@@ -52,6 +52,7 @@ function createStyles(colors: AppPalette) {
     backdrop: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0,0,0,0.45)',
+      pointerEvents: 'auto',
     },
     sheet: {
       width: '100%',

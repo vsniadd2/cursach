@@ -1,14 +1,17 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { getJson } from '../api/requests';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import type { MoreStackParamList } from '../navigation/types';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useI18n } from '../i18n/useI18n';
+import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { resolveBillingErrorMessage } from '../utils/billingErrors';
 import { integrationJobStatusLabel } from '../utils/locale';
 
 type WebhooksResponse = {
@@ -52,16 +55,18 @@ type Props = NativeStackScreenProps<MoreStackParamList, 'MoreIntegrations'>;
 
 export function IntegrationsScreen({ navigation }: Props) {
   const colors = useAppColors();
+  const { language } = useAppPreferences();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const auth = useAuth();
+  const { t } = useI18n();
 
   const [hooks, setHooks] = useState<WebhooksResponse | null>(null);
   const [jobs, setJobs] = useState<JobsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadIntegrations = useCallback(() => {
     let alive = true;
     setLoading(true);
     setError(null);
@@ -76,7 +81,7 @@ export function IntegrationsScreen({ navigation }: Props) {
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+        setError(resolveBillingErrorMessage(e, t));
       })
       .finally(() => {
         if (!alive) return;
@@ -85,14 +90,16 @@ export function IntegrationsScreen({ navigation }: Props) {
     return () => {
       alive = false;
     };
-  }, [auth]);
+  }, [auth, t]);
+
+  useAutoRefresh(['integrations'], loadIntegrations);
 
   return (
     <View style={styles.root}>
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
-        <Text style={styles.title}>Интеграции</Text>
-        <Text style={styles.sub}>Вебхуки и очередь фоновых задач (только просмотр в мобильном клиенте).</Text>
+        <Text style={styles.title}>{t('more.integrations')}</Text>
+        <Text style={styles.sub}>{t('more.integrationsDesc')}</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         <Text style={styles.section}>Вебхуки</Text>
@@ -110,7 +117,7 @@ export function IntegrationsScreen({ navigation }: Props) {
         {(jobs?.items ?? []).map((j) => (
           <View key={j.id} style={styles.card}>
             <Text style={styles.rowTitle}>
-              #{j.id} {j.jobType} — {integrationJobStatusLabel(j.status)}
+              #{j.id} {j.jobType} — {integrationJobStatusLabel(j.status, language)}
             </Text>
             <Text style={styles.rowSub}>
               попыток: {j.attempts}

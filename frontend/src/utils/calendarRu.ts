@@ -1,3 +1,5 @@
+import type { AppLanguage } from './locale';
+
 const MONTHS_RU = [
   'Январь',
   'Февраль',
@@ -13,7 +15,8 @@ const MONTHS_RU = [
   'Декабрь',
 ] as const;
 
-const WEEKDAY_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const WEEKDAY_SHORT_RU = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const WEEKDAY_SHORT_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Заголовки колонок календаря (понедельник — первый день). */
 export const WEEKDAY_HEADERS_MON = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'] as const;
@@ -59,6 +62,13 @@ export function formatMonthYearRu(d: Date): string {
   return `${MONTHS_RU[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+export function formatMonthYear(d: Date, language: AppLanguage = 'ru'): string {
+  if (language === 'en') {
+    return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  return formatMonthYearRu(d);
+}
+
 export function getMondayToFriday(anchor: Date): Date[] {
   const x = new Date(anchor);
   x.setHours(12, 0, 0, 0);
@@ -75,7 +85,12 @@ export function getMondayToFriday(anchor: Date): Date[] {
 }
 
 export function weekdayShortRu(d: Date): string {
-  return WEEKDAY_SHORT[d.getDay()];
+  return WEEKDAY_SHORT_RU[d.getDay()];
+}
+
+export function weekdayShort(d: Date, language: AppLanguage = 'ru'): string {
+  const list = language === 'en' ? WEEKDAY_SHORT_EN : WEEKDAY_SHORT_RU;
+  return list[d.getDay()];
 }
 
 export function shiftMonth(d: Date, delta: number): Date {

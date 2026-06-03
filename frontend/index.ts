@@ -1,4 +1,10 @@
 import { registerRootComponent } from 'expo';
+import { Platform } from 'react-native';
+import { enableScreens } from 'react-native-screens';
+
+if (Platform.OS === 'web') {
+  enableScreens(false);
+}
 
 import App from './App';
 

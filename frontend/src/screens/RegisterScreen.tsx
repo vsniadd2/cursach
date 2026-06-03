@@ -1,10 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { AuthPrimaryButton, AuthShell, useAuthFormStyles } from '../auth/AuthShell';
 import { useAuth } from '../auth/AuthContext';
+import { AppTextInput } from '../components/AppTextInput';
 import { APP_NAME, APP_EMAIL_DOMAIN } from '../constants/brand';
+import { useAppColors } from '../theme/AppPreferencesContext';
 
 type Props = {
   goToLogin: () => void;
@@ -61,52 +63,58 @@ export function RegisterScreen({ goToLogin }: Props) {
       }
     >
       <Text style={authStyles.label}>ФИО</Text>
-      <TextInput
+      <AppTextInput
         placeholder="Иван Иванов"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="next"
         value={fullName}
         onChangeText={setFullName}
         style={authStyles.input}
       />
 
       <Text style={authStyles.label}>Электронная почта</Text>
-      <TextInput
+      <AppTextInput
         autoCapitalize="none"
         keyboardType="email-address"
         placeholder={`ivan@${APP_EMAIL_DOMAIN}`}
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="next"
         value={email}
         onChangeText={setEmail}
         style={authStyles.input}
       />
 
       <Text style={authStyles.label}>Логин</Text>
-      <TextInput
+      <AppTextInput
         autoCapitalize="none"
         placeholder="ivan"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="next"
         value={username}
         onChangeText={setUsername}
         style={authStyles.input}
       />
 
       <Text style={authStyles.label}>Пароль</Text>
-      <TextInput
+      <AppTextInput
         secureTextEntry
         placeholder="••••••••"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="next"
         value={password}
         onChangeText={setPassword}
         style={authStyles.input}
       />
 
       <Text style={authStyles.label}>Подтверждение пароля</Text>
-      <TextInput
+      <AppTextInput
         secureTextEntry
         placeholder="••••••••"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="done"
         value={confirm}
         onChangeText={setConfirm}
+        onSubmitEditing={() => void onSubmit()}
         style={authStyles.input}
       />
 

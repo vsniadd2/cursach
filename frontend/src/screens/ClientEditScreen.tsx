@@ -1,17 +1,22 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { useAuth } from '../auth/AuthContext';
 import { deleteJson, getJson, postJson, putJson } from '../api/requests';
 import type { ClientDetailResponse } from '../api/types';
 import { AppHeader } from '../components/AppHeader';
+import { AppTextInput } from '../components/AppTextInput';
 import { APP_EMAIL_DOMAIN } from '../constants/brand';
 import type { ClientsStackParamList } from '../navigation/types';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useDataSync } from '../data/DataSyncContext';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { resolveBillingErrorMessage } from '../utils/billingErrors';
+import { useI18n } from '../i18n/useI18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ClientsStackParamList, 'ClientEdit'>;
@@ -21,9 +26,11 @@ type Props = {
 export function ClientEditScreen({ navigation, route }: Props) {
   const colors = useAppColors();
   const styles = useMemo(() => createClientEditStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 120 + insets.bottom;
   const auth = useAuth();
+  const { invalidate } = useDataSync();
+  const { t } = useI18n();
 
   const clientId = route.params?.clientId;
   const isEdit = typeof clientId === 'number';
@@ -38,9 +45,9 @@ export function ClientEditScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadClient = useCallback(() => {
+    if (!isEdit || typeof clientId !== 'number') return;
     let alive = true;
-    if (!isEdit) return;
     setError(null);
     setLoading(true);
     getJson<ClientDetailResponse>(auth, `/clients/${clientId}`)
@@ -67,6 +74,8 @@ export function ClientEditScreen({ navigation, route }: Props) {
     };
   }, [auth, clientId, isEdit]);
 
+  useAutoRefresh(['clients'], loadClient);
+
   const onSave = async () => {
     if (loading) return;
     setError(null);
@@ -86,13 +95,15 @@ export function ClientEditScreen({ navigation, route }: Props) {
     try {
       if (isEdit) {
         await putJson<null>(auth, `/clients/${clientId}`, payload);
+        invalidate('clients', 'dashboard', 'deals', 'audit');
         navigation.replace('ClientDetail', { clientId: clientId! });
       } else {
         const created = await postJson<{ id: number }>(auth, '/clients', payload);
+        invalidate('clients', 'dashboard', 'deals', 'audit');
         navigation.replace('ClientDetail', { clientId: created.id });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Ошибка сохранения');
+      setError(resolveBillingErrorMessage(e, t));
     } finally {
       setLoading(false);
     }
@@ -109,6 +120,7 @@ export function ClientEditScreen({ navigation, route }: Props) {
           setLoading(true);
           try {
             await deleteJson(auth, `/clients/${clientId}`);
+            invalidate('clients', 'dashboard', 'deals', 'audit');
             navigation.popToTop();
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Ошибка удаления');
@@ -129,16 +141,16 @@ export function ClientEditScreen({ navigation, route }: Props) {
         {loading && !fullName && isEdit ? <Text style={styles.muted}>Загрузка…</Text> : null}
 
         <Text style={styles.label}>ФИО</Text>
-        <TextInput value={fullName} onChangeText={setFullName} placeholder="Иван Иванов" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
+        <AppTextInput value={fullName} onChangeText={setFullName} placeholder="Иван Иванов" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
 
         <Text style={styles.label}>Компания</Text>
-        <TextInput value={company} onChangeText={setCompany} placeholder="Acme Corp" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
+        <AppTextInput value={company} onChangeText={setCompany} placeholder="Acme Corp" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
 
         <Text style={styles.label}>Должность</Text>
-        <TextInput value={roleTitle} onChangeText={setRoleTitle} placeholder="Менеджер" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
+        <AppTextInput value={roleTitle} onChangeText={setRoleTitle} placeholder="Менеджер" placeholderTextColor={`${colors.onSurfaceVariant}99`} style={styles.input} />
 
         <Text style={styles.label}>Телефон</Text>
-        <TextInput
+        <AppTextInput
           value={phone}
           onChangeText={setPhone}
           placeholder="+375 29 123-45-67"
@@ -148,7 +160,7 @@ export function ClientEditScreen({ navigation, route }: Props) {
         />
 
         <Text style={styles.label}>Рабочая почта</Text>
-        <TextInput
+        <AppTextInput
           value={workEmail}
           onChangeText={setWorkEmail}
           placeholder={`name@${APP_EMAIL_DOMAIN}`}

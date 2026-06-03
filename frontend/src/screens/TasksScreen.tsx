@@ -2,6 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -9,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { CompositeNavigationProp } from '@react-navigation/native';
 
@@ -17,15 +18,19 @@ import { useAuth } from '../auth/AuthContext';
 import { getJson, patchJson } from '../api/requests';
 import type { TasksResponse } from '../api/types';
 import { AppHeader } from '../components/AppHeader';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { useI18n } from '../i18n/useI18n';
+import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { taskPriorityLabel } from '../utils/locale';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useDataSync } from '../data/DataSyncContext';
+import { rnwShadow } from '../utils/rnwShadow';
 import {
-  formatMonthYearRu,
+  formatMonthYear,
   getMondayToFriday,
   sameCalendarDay,
   shiftMonth,
-  weekdayShortRu,
+  weekdayShort,
 } from '../utils/calendarRu';
 
 const pressableWeb = Platform.OS === 'web' ? ({ cursor: 'pointer' } as const) : undefined;
@@ -34,13 +39,17 @@ type RootNav = NativeStackNavigationProp<any>;
 
 export function TasksScreen({ navigation }: { navigation: RootNav }) {
   const colors = useAppColors();
+  const { language } = useAppPreferences();
+  const { t } = useI18n();
   const styles = useMemo(() => createTasksScreenStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 120 + insets.bottom;
   const auth = useAuth();
+  const { invalidate } = useDataSync();
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [data, setData] = useState<TasksResponse | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const weekDays = useMemo(() => getMondayToFriday(selectedDate), [selectedDate]);
@@ -52,9 +61,10 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
     return `${y}-${m}-${d}`;
   }, [selectedDate]);
 
-  useEffect(() => {
+  const loadTasks = useCallback(() => {
     let alive = true;
     setError(null);
+    setLoading(true);
     getJson<TasksResponse>(auth, `/tasks?date=${encodeURIComponent(dateStr)}`)
       .then((d) => {
         if (!alive) return;
@@ -62,12 +72,28 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+        setError(e instanceof Error ? e.message : t('common.loadError'));
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
       });
     return () => {
       alive = false;
     };
-  }, [auth, dateStr]);
+  }, [auth, dateStr, t]);
+
+  useAutoRefresh(['tasks'], loadTasks);
+
+  useEffect(() => {
+    return loadTasks();
+  }, [loadTasks]);
+
+  const selectDate = useCallback((d: Date) => {
+    setSelectedDate(new Date(d));
+    setData(null);
+    setLoading(true);
+  }, []);
 
   const goPrevMonth = useCallback(() => {
     setSelectedDate((d) => shiftMonth(d, -1));
@@ -90,6 +116,7 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
       );
       try {
         await patchJson<null>(auth, `/tasks/${id}/done`, { done: nextDone });
+        invalidate('tasks', 'dashboard', 'audit');
       } catch (e) {
         // откат
         setData((p) =>
@@ -101,10 +128,10 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
               }
             : p
         );
-        setError(e instanceof Error ? e.message : 'Ошибка сохранения');
+        setError(e instanceof Error ? e.message : t('tasks.saveError'));
       }
     },
-    [auth]
+    [auth, invalidate, t],
   );
 
   return (
@@ -115,10 +142,10 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.calHeader}>
-          <Text style={styles.monthTitle}>{formatMonthYearRu(selectedDate)}</Text>
+          <Text style={styles.monthTitle}>{formatMonthYear(selectedDate, language)}</Text>
           <View style={styles.calNav}>
             <Pressable
-              accessibilityLabel="Предыдущий месяц"
+              accessibilityLabel={t('tasks.prevMonth')}
               accessibilityRole="button"
               hitSlop={8}
               onPress={goPrevMonth}
@@ -127,7 +154,7 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
               <MaterialIcons color={colors.onSurfaceVariant} name="chevron-left" size={20} />
             </Pressable>
             <Pressable
-              accessibilityLabel="Следующий месяц"
+              accessibilityLabel={t('tasks.nextMonth')}
               accessibilityRole="button"
               hitSlop={8}
               onPress={goNextMonth}
@@ -144,11 +171,11 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
             const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
             return (
               <Pressable
-                accessibilityLabel={`${weekdayShortRu(d)} ${d.getDate()}`}
+                accessibilityLabel={`${weekdayShort(d, language)} ${d.getDate()}`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
                 key={key}
-                onPress={() => setSelectedDate(new Date(d))}
+                onPress={() => selectDate(d)}
                 style={({ pressed }) => [
                   styles.dayCell,
                   active ? styles.dayCellActive : styles.dayCellIdle,
@@ -157,7 +184,7 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
                 ]}
               >
                 <Text style={[styles.dayName, active && styles.dayNameActive]}>
-                  {weekdayShortRu(d)}
+                  {weekdayShort(d, language)}
                 </Text>
                 <Text style={[styles.dayNum, active && styles.dayNumActive]}>{d.getDate()}</Text>
               </Pressable>
@@ -167,14 +194,14 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Выполнено</Text>
+            <Text style={styles.statLabel}>{t('tasks.done')}</Text>
             <View style={styles.statValues}>
               <Text style={[styles.statMain, { color: colors.primary }]}>{data?.done ?? 0}</Text>
               <Text style={styles.statSlash}>/ {data?.total ?? 0}</Text>
             </View>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statLabel}>Продуктивность</Text>
+            <Text style={styles.statLabel}>{t('tasks.productivity')}</Text>
             <View style={styles.statValues}>
               <Text style={[styles.statMain, { color: colors.tertiary }]}>
                 {data?.total ? `${Math.round((data.done / data.total) * 100)}%` : '—'}
@@ -186,55 +213,59 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
 
         <View style={styles.focusBlock}>
           <View style={styles.focusHead}>
-            <Text style={styles.focusTitle}>Фокус дня</Text>
-            <Text style={styles.viewAll}>{error ? 'Ошибка' : ' '}</Text>
+            <Text style={styles.focusTitle}>{t('tasks.focusTitle')}</Text>
+            {loading ? (
+              <ActivityIndicator color={colors.primary} size="small" />
+            ) : (
+              <Text style={styles.viewAll}>{error ? t('tasks.error') : ' '}</Text>
+            )}
           </View>
 
-          {(data?.items ?? []).map((t) => {
+          {(data?.items ?? []).map((task) => {
             const badge =
-              t.priority === 'High'
-                ? { wrap: styles.badgeHigh, text: styles.badgeHighText, label: taskPriorityLabel(t.priority) }
-                : t.priority === 'Medium'
-                  ? { wrap: styles.badgeMed, text: styles.badgeMedText, label: taskPriorityLabel(t.priority) }
-                  : { wrap: styles.badgeLow, text: styles.badgeLowText, label: taskPriorityLabel(t.priority) };
+              task.priority === 'High'
+                ? { wrap: styles.badgeHigh, text: styles.badgeHighText, label: taskPriorityLabel(task.priority, language) }
+                : task.priority === 'Medium'
+                  ? { wrap: styles.badgeMed, text: styles.badgeMedText, label: taskPriorityLabel(task.priority, language) }
+                  : { wrap: styles.badgeLow, text: styles.badgeLowText, label: taskPriorityLabel(task.priority, language) };
 
             return (
               <Pressable
-                key={t.id}
-                onPress={() => navigation.navigate('TaskEdit', { taskId: t.id })}
-                style={({ pressed }) => [styles.taskCard, t.done && styles.taskDone, pressed && { opacity: 0.95 }]}
+                key={task.id}
+                onPress={() => navigation.navigate('TaskEdit', { taskId: task.id })}
+                style={({ pressed }) => [styles.taskCard, task.done && styles.taskDone, pressed && { opacity: 0.95 }]}
               >
                 <Pressable
-                  accessibilityLabel="Отметить задачу"
+                  accessibilityLabel={t('tasks.toggleA11y')}
                   hitSlop={8}
-                  onPress={() => toggleTask(t.id, !t.done)}
+                  onPress={() => toggleTask(task.id, !task.done)}
                   style={({ pressed }) => [styles.checkboxWrap, pressed && styles.pressed]}
                 >
-                  <View style={t.done ? styles.checkboxFilled : styles.checkbox}>
-                    {t.done ? (
+                  <View style={task.done ? styles.checkboxFilled : styles.checkbox}>
+                    {task.done ? (
                       <MaterialIcons color={colors.onPrimaryContainer} name="check" size={16} />
                     ) : null}
                   </View>
                 </Pressable>
                 <View style={styles.taskMain}>
                   <View style={styles.taskTitleRow}>
-                    <Text style={[styles.taskTitle, t.done && styles.taskTitleStrike]}>{t.title}</Text>
+                    <Text style={[styles.taskTitle, task.done && styles.taskTitleStrike]}>{task.title}</Text>
                     <View style={badge.wrap}>
                       <Text style={badge.text}>{badge.label}</Text>
                     </View>
                   </View>
-                  {t.description ? <Text style={styles.taskDesc}>{t.description}</Text> : null}
+                  {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
                   <View style={styles.taskMeta}>
-                    {t.time ? (
+                    {task.time ? (
                       <View style={styles.metaItem}>
                         <MaterialIcons color={colors.onSurfaceVariant} name="schedule" size={14} />
-                        <Text style={styles.metaText}>{String(t.time).slice(0, 5)}</Text>
+                        <Text style={styles.metaText}>{String(task.time).slice(0, 5)}</Text>
                       </View>
                     ) : null}
-                    {t.assigneeName ? (
+                    {task.assigneeName ? (
                       <View style={styles.metaItem}>
                         <MaterialIcons color={colors.onSurfaceVariant} name="person" size={14} />
-                        <Text style={styles.metaText}>{t.assigneeName}</Text>
+                        <Text style={styles.metaText}>{task.assigneeName}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -246,7 +277,7 @@ export function TasksScreen({ navigation }: { navigation: RootNav }) {
       </ScrollView>
 
       <Pressable
-        accessibilityLabel="Добавить задачу"
+        accessibilityLabel={t('tasks.addA11y')}
         accessibilityRole="button"
         hitSlop={12}
         onPress={() => navigation.navigate('TaskEdit')}
@@ -321,11 +352,7 @@ function createTasksScreenStyles(colors: AppPalette) {
   },
   dayCellActive: {
     backgroundColor: colors.primaryContainer,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 4 }, opacity: 0.2, radius: 8, elevation: 4 }),
   },
   dayCellPressed: {
     opacity: 0.85,
@@ -523,11 +550,7 @@ function createTasksScreenStyles(colors: AppPalette) {
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 10,
+    ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 6 }, opacity: 0.35, radius: 12, elevation: 10 }),
   },
   pressed: {
     opacity: 0.75,

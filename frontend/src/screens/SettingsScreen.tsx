@@ -1,5 +1,5 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,13 +8,15 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { AppHeader } from '../components/AppHeader';
+import { useI18n } from '../i18n/useI18n';
 import type { MoreStackParamList } from '../navigation/types';
 import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { SUPPORTED_CURRENCIES, type UiThemeMode } from '../theme/palettes';
+import type { AppLanguage } from '../utils/locale';
 
 type Props = NativeStackScreenProps<MoreStackParamList, 'MoreSettings'>;
 
@@ -81,17 +83,7 @@ function createStyles(colors: AppPalette) {
     },
     chipText: { fontSize: 14, fontWeight: '700', color: colors.onSurface },
     chipTextActive: { color: colors.primary },
-    saveBtn: {
-      marginTop: 8,
-      height: 52,
-      borderRadius: 999,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    saveText: { fontSize: 16, fontWeight: '900', color: colors.onPrimary },
     error: { marginTop: 14, color: colors.error, fontWeight: '700', fontSize: 14 },
-    ok: { marginTop: 14, color: colors.tertiary, fontWeight: '700', fontSize: 14 },
     preview: {
       marginTop: 20,
       padding: 14,
@@ -108,105 +100,104 @@ function createStyles(colors: AppPalette) {
 
 export function SettingsScreen({ navigation }: Props) {
   const colors = useAppColors();
-  const { theme, currency, profile, updatePreferences, formatMoney, isMeLoading } = useAppPreferences();
+  const { t } = useI18n();
+  const { theme, currency, language, profile, updatePreferences, formatMoney, isMeLoading, meError } =
+    useAppPreferences();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 96 + insets.bottom;
 
-  const [draftTheme, setDraftTheme] = useState<UiThemeMode>(theme);
-  const [draftCurrency, setDraftCurrency] = useState(currency);
   const [saving, setSaving] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const [savedOk, setSavedOk] = useState(false);
 
-  useEffect(() => {
-    setDraftTheme(theme);
-    setDraftCurrency(currency);
-  }, [theme, currency]);
-
-  const onSave = useCallback(async () => {
-    setLocalError(null);
-    setSavedOk(false);
-    setSaving(true);
-    try {
-      const ok = await updatePreferences({ theme: draftTheme, currency: draftCurrency });
-      if (ok) setSavedOk(true);
-      else setLocalError('Сервер отклонил сохранение');
-    } catch (e) {
-      setLocalError(e instanceof Error ? e.message : 'Ошибка сохранения');
-    } finally {
-      setSaving(false);
-    }
-  }, [draftCurrency, draftTheme, updatePreferences]);
+  const apply = useCallback(
+    async (p: { theme?: UiThemeMode; currency?: string; language?: AppLanguage }) => {
+      setSaving(true);
+      try {
+        await updatePreferences(p);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [updatePreferences],
+  );
 
   return (
     <View style={styles.root}>
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}>
-        <Text style={styles.title}>Настройки</Text>
-        <Text style={styles.sub}>
-          Тема и валюта сохраняются в вашем профиле на сервере и применяются на всех экранах.
-        </Text>
-        <Text style={styles.hint}>
-          Суммы сделок и аналитика в базе хранятся в USD; в интерфейсе показываются в выбранной валюте по
-          демонстрационному курсу к доллару (без онлайн-подгрузки курсов).
-        </Text>
+        <Text style={styles.title}>{t('settings.title')}</Text>
+        <Text style={styles.sub}>{t('settings.sub')}</Text>
+        <Text style={styles.hint}>{t('settings.hint')}</Text>
 
         {isMeLoading && !profile ? (
           <ActivityIndicator color={colors.primary} size="large" />
         ) : null}
 
-        <Text style={styles.sectionLabel}>Тема оформления</Text>
+        <Text style={styles.sectionLabel}>{t('settings.themeSection')}</Text>
         <View style={styles.row}>
-          {(['light', 'dark'] as const).map((t) => (
+          {(['light', 'dark'] as const).map((mode) => (
             <Pressable
-              key={t}
+              key={mode}
               accessibilityRole="button"
-              onPress={() => setDraftTheme(t)}
-              style={[styles.chip, draftTheme === t && styles.chipActive]}
+              disabled={saving}
+              onPress={() => {
+                if (mode !== theme) void apply({ theme: mode });
+              }}
+              style={[styles.chip, theme === mode && styles.chipActive, saving && { opacity: 0.7 }]}
             >
-              <Text style={[styles.chipText, draftTheme === t && styles.chipTextActive]}>
-                {t === 'light' ? 'Светлая' : 'Тёмная'}
+              <Text style={[styles.chipText, theme === mode && styles.chipTextActive]}>
+                {mode === 'light' ? t('settings.themeLight') : t('settings.themeDark')}
               </Text>
             </Pressable>
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>Валюта отображения</Text>
+        <Text style={styles.sectionLabel}>{t('settings.langSection')}</Text>
+        <View style={styles.row}>
+          {(
+            [
+              { id: 'ru' as const, label: t('settings.langRu') },
+              { id: 'en' as const, label: t('settings.langEn') },
+            ] as const
+          ).map((opt) => (
+            <Pressable
+              key={opt.id}
+              accessibilityRole="button"
+              disabled={saving}
+              onPress={() => {
+                if (opt.id !== language) void apply({ language: opt.id });
+              }}
+              style={[styles.chip, language === opt.id && styles.chipActive, saving && { opacity: 0.7 }]}
+            >
+              <Text style={[styles.chipText, language === opt.id && styles.chipTextActive]}>{opt.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={styles.sectionLabel}>{t('settings.currencySection')}</Text>
         <View style={styles.currencyGrid}>
           {SUPPORTED_CURRENCIES.map((c) => (
             <Pressable
               key={c}
               accessibilityRole="button"
-              onPress={() => setDraftCurrency(c)}
-              style={[styles.chipGrid, draftCurrency === c && styles.chipActive]}
+              disabled={saving}
+              onPress={() => {
+                if (c !== currency) void apply({ currency: c });
+              }}
+              style={[styles.chipGrid, currency === c && styles.chipActive, saving && { opacity: 0.7 }]}
             >
-              <Text style={[styles.chipText, draftCurrency === c && styles.chipTextActive]}>{c}</Text>
+              <Text style={[styles.chipText, currency === c && styles.chipTextActive]}>{c}</Text>
             </Pressable>
           ))}
         </View>
 
         <View style={styles.preview}>
-          <Text style={styles.previewLabel}>Пересчёт из USD</Text>
-          <Text style={styles.previewCaption}>эквивалент 10 000 USD в выбранной валюте</Text>
+          <Text style={styles.previewLabel}>{t('settings.previewLabel')}</Text>
+          <Text style={styles.previewCaption}>{t('settings.previewCaption')}</Text>
           <Text style={styles.previewMoney}>{formatMoney(10000)}</Text>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={saving}
-          onPress={() => void onSave()}
-          style={[styles.saveBtn, saving && { opacity: 0.7 }]}
-        >
-          {saving ? (
-            <ActivityIndicator color={colors.onPrimary} />
-          ) : (
-            <Text style={styles.saveText}>Сохранить</Text>
-          )}
-        </Pressable>
-
-        {localError ? <Text style={styles.error}>{localError}</Text> : null}
-        {savedOk && !localError ? <Text style={styles.ok}>Сохранено</Text> : null}
+        {meError ? <Text style={styles.error}>{meError}</Text> : null}
       </ScrollView>
     </View>
   );

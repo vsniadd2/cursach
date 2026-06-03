@@ -1,17 +1,21 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { useAuth } from '../auth/AuthContext';
 import { getJson } from '../api/requests';
 import type { ClientsListResponse } from '../api/types';
 import { AppHeader } from '../components/AppHeader';
+import { AppTextInput } from '../components/AppTextInput';
 import { ClientAvatarImage } from '../components/ClientAvatarImage';
 import type { ClientsStackParamList } from '../navigation/types';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useI18n } from '../i18n/useI18n';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { rnwShadow } from '../utils/rnwShadow';
 
 type Props = {
   navigation: NativeStackNavigationProp<ClientsStackParamList, 'ClientsList'>;
@@ -64,19 +68,16 @@ function createStyles(colors: AppPalette) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: colors.primary,
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.35,
-      shadowRadius: 16,
-      elevation: 12,
+      ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 8 }, opacity: 0.35, radius: 16, elevation: 12 }),
     },
   });
 }
 
 export function ClientsScreen({ navigation }: Props) {
   const colors = useAppColors();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 120 + insets.bottom;
   const auth = useAuth();
 
@@ -87,7 +88,7 @@ export function ClientsScreen({ navigation }: Props) {
 
   const query = useMemo(() => q.trim(), [q]);
 
-  useEffect(() => {
+  const loadClients = useCallback(() => {
     let alive = true;
     setError(null);
     setLoading(true);
@@ -99,7 +100,7 @@ export function ClientsScreen({ navigation }: Props) {
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+        setError(e instanceof Error ? e.message : t('common.loadError'));
       })
       .finally(() => {
         if (!alive) return;
@@ -108,7 +109,9 @@ export function ClientsScreen({ navigation }: Props) {
     return () => {
       alive = false;
     };
-  }, [auth, query]);
+  }, [auth, query, t]);
+
+  useAutoRefresh(['clients'], loadClients);
 
   return (
     <View style={styles.root}>
@@ -117,13 +120,14 @@ export function ClientsScreen({ navigation }: Props) {
         contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Клиенты</Text>
+        <Text style={styles.title}>{t('clients.title')}</Text>
 
         <View style={styles.searchRow}>
           <MaterialIcons color={colors.slate400} name="search" size={20} />
-          <TextInput
-            placeholder="Поиск по имени или компании"
+          <AppTextInput
+            placeholder={t('clients.search')}
             placeholderTextColor={`${colors.onSurfaceVariant}99`}
+            returnKey="search"
             value={q}
             onChangeText={setQ}
             style={styles.searchInput}
@@ -131,7 +135,7 @@ export function ClientsScreen({ navigation }: Props) {
         </View>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        {loading ? <Text style={styles.muted}>Загрузка…</Text> : null}
+        {loading ? <Text style={styles.muted}>{t('clients.loading')}</Text> : null}
 
         <View style={styles.list}>
           {(data?.items ?? []).map((c) => (
@@ -142,7 +146,14 @@ export function ClientsScreen({ navigation }: Props) {
               style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}
             >
               <View style={styles.cardTop}>
-                <ClientAvatarImage clientId={c.id} size={44} style={styles.rowAvatar} uri={c.avatarSmallUrl} />
+                <ClientAvatarImage
+                  clientId={c.id}
+                  fullName={c.fullName}
+                  avatarHue={c.avatarHue}
+                  size={44}
+                  style={styles.rowAvatar}
+                  uri={c.avatarSmallUrl}
+                />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{c.fullName}</Text>
                   <Text style={styles.company}>{c.company}</Text>
@@ -156,7 +167,7 @@ export function ClientsScreen({ navigation }: Props) {
       </ScrollView>
 
       <Pressable
-        accessibilityLabel="Добавить клиента"
+        accessibilityLabel={t('clients.addA11y')}
         accessibilityRole="button"
         hitSlop={12}
         onPress={() => navigation.navigate('ClientEdit')}

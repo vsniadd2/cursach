@@ -11,7 +11,7 @@ namespace ExpogoCrm.Api.Controllers.More;
 [ApiController]
 [Route("automations")]
 [Authorize]
-public class AutomationsController(ExpogoDbContext db, IAuditTrailService audit) : ControllerBase
+public class AutomationsController(ExpogoDbContext db, IAuditTrailService audit, IBillingEntitlementsService billing) : ControllerBase
 {
     [HttpGet]
     [Authorize(Policy = CrmPermissions.DealsRead)]
@@ -42,6 +42,11 @@ public class AutomationsController(ExpogoDbContext db, IAuditTrailService audit)
         var tenantId = this.RequireTenantId();
         if (string.IsNullOrWhiteSpace(req.Name) || string.IsNullOrWhiteSpace(req.Trigger) || string.IsNullOrWhiteSpace(req.Action))
             return BadRequest(new { message = "Укажите название, триггер и действие." });
+
+        var featureCheck = await billing.EnsureFeatureAsync(tenantId, BillingFeature.Automations, ct);
+        var featureError = this.ToBillingActionResult(featureCheck);
+        if (featureError is not null)
+            return featureError;
 
         var rule = new AutomationRule
         {

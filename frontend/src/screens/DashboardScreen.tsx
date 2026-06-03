@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -10,20 +10,28 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
-import { useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
+import { AppTextInput } from '../components/AppTextInput';
 import { getJson } from '../api/requests';
+import { useI18n } from '../i18n/useI18n';
 import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { confirmAsync } from '../utils/appAlerts';
-import { greetingByTimeRu } from '../utils/locale';
-import type { DashboardResponse } from '../api/types';
+import {
+  gradientChoicesFor,
+  mapApiQuickActions,
+  toApiQuickActions,
+  type UiQuickAction,
+} from '../utils/dashboardQuickActions';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { DEAL_STAGES, dealStageLabel, formatGrowthPct, greetingByTime } from '../utils/locale';
+import { rnwShadow } from '../utils/rnwShadow';
+import type { DashboardResponse, DealStage } from '../api/types';
 import type { MainTabParamList } from '../navigation/types';
 
 function timeAgoShortRu(iso: string) {
@@ -37,12 +45,7 @@ function timeAgoShortRu(iso: string) {
   return `${d} дн`;
 }
 
-type QuickAction = {
-  id: string;
-  title: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
-  gradient: readonly [string, string];
-};
+type QuickAction = UiQuickAction;
 
 const ICON_CHOICES: Array<QuickAction['icon']> = [
   'add',
@@ -57,22 +60,14 @@ const ICON_CHOICES: Array<QuickAction['icon']> = [
   'local-offer',
 ];
 
-function gradientChoicesFor(colors: AppPalette): Array<QuickAction['gradient']> {
-  return [
-    [colors.primary, colors.primaryContainer],
-    [colors.secondary, colors.primaryFixedDim],
-    [colors.tertiaryContainer, colors.tertiary],
-    [colors.orange700, colors.orange50],
-  ];
-}
-
 export function DashboardScreen() {
   const colors = useAppColors();
-  const { formatMoney, profile } = useAppPreferences();
+  const { formatMoney, profile, language, updatePreferences } = useAppPreferences();
+  const { t } = useI18n();
   const styles = useMemo(() => createDashboardStyles(colors), [colors]);
   const gradientChoices = useMemo(() => gradientChoicesFor(colors), [colors]);
 
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 100 + insets.bottom;
   const auth = useAuth();
   const navigation = useNavigation<any>();
@@ -83,7 +78,7 @@ export function DashboardScreen() {
 
   const activitiesTake = activityExpanded ? 100 : 10;
 
-  useEffect(() => {
+  const loadDashboard = useCallback(() => {
     let alive = true;
     setDashError(null);
     getJson<DashboardResponse>(auth, `/dashboard?activitiesTake=${activitiesTake}`)
@@ -93,41 +88,20 @@ export function DashboardScreen() {
       })
       .catch((e) => {
         if (!alive) return;
-        setDashError(e instanceof Error ? e.message : 'Ошибка загрузки');
+        setDashError(e instanceof Error ? e.message : t('dashboard.loadError'));
       });
     return () => {
       alive = false;
     };
-  }, [auth, activitiesTake]);
+  }, [auth, activitiesTake, t]);
 
-  const defaults = useMemo<Array<QuickAction>>(
-    () => [
-      {
-        id: 'lead',
-        title: 'Лид',
-        icon: 'person-add',
-        gradient: [colors.primary, colors.primaryContainer],
-      },
-      {
-        id: 'call',
-        title: 'Звонок',
-        icon: 'call',
-        gradient: [colors.secondary, colors.primaryFixedDim],
-      },
-      {
-        id: 'meeting',
-        title: 'Встреча',
-        icon: 'event',
-        gradient: [colors.tertiaryContainer, colors.tertiary],
-      },
-    ],
-    [colors],
+  useAutoRefresh(['dashboard', 'deals', 'tasks'], loadDashboard);
+
+  const quickActions = useMemo(
+    () => mapApiQuickActions(profile?.dashboardQuickActions ?? [], colors, t),
+    [profile?.dashboardQuickActions, colors, t],
   );
 
-  const [quickActions, setQuickActions] = useState<Array<QuickAction>>([]);
-  useEffect(() => {
-    setQuickActions((prev) => (prev.length === 0 ? defaults : prev));
-  }, [defaults]);
   const [addOpen, setAddOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState('');
   const [draftIcon, setDraftIcon] = useState<QuickAction['icon']>('add');
@@ -135,44 +109,48 @@ export function DashboardScreen() {
 
   const draftGradient = gradientChoices[draftGradientIdx] ?? gradientChoices[0];
 
-  const greetingName = profile?.fullName?.trim() || profile?.username || 'коллега';
+  const greetingName = profile?.fullName?.trim() || profile?.username || t('dashboard.colleague');
+  const growthPct = dash?.monthSalesGrowthPct;
+  const growthLabel =
+    growthPct != null ? formatGrowthPct(growthPct, language) : null;
+  const growthPositive = growthPct != null && growthPct >= 0;
+  const openTaskCreate = (presetTitle?: string) => {
+    navigation.navigate('TaskEdit', presetTitle ? { presetTitle } : undefined);
+  };
   const openDealsCreate = () => {
     navigation.navigate('Deals' satisfies keyof MainTabParamList, { screen: 'DealEdit' });
   };
   const openDealsPipeline = () => {
     navigation.navigate('Deals' satisfies keyof MainTabParamList, { screen: 'DealsPipeline' });
   };
-  const openTasks = () => {
-    navigation.navigate('Tasks' satisfies keyof MainTabParamList);
+  const persistQuickActions = async (next: QuickAction[]) => {
+    await updatePreferences({ dashboardQuickActions: toApiQuickActions(next) });
   };
   const onQuickActionPress = (a: QuickAction) => {
-    const normalized = `${a.id} ${a.title}`.toLowerCase();
-    if (normalized.includes('лид') || normalized.includes('lead')) {
+    if (a.id === 'lead') {
       openDealsCreate();
       return;
     }
-    if (
-      normalized.includes('звон') ||
-      normalized.includes('call') ||
-      normalized.includes('встреч') ||
-      normalized.includes('meeting') ||
-      normalized.includes('task') ||
-      normalized.includes('задач')
-    ) {
-      openTasks();
+    if (a.id === 'call') {
+      openTaskCreate(t('dashboard.quickCall'));
+      return;
+    }
+    if (a.id === 'meeting') {
+      openTaskCreate(t('dashboard.quickMeeting'));
       return;
     }
     openDealsPipeline();
   };
   const onQuickActionLongPress = async (a: QuickAction) => {
     const ok = await confirmAsync({
-      title: 'Удалить действие?',
+      title: t('dashboard.deleteActionTitle'),
       message: a.title,
-      cancelLabel: 'Отмена',
-      confirmLabel: 'Удалить',
+      cancelLabel: t('common.cancel'),
+      confirmLabel: t('common.delete'),
     });
     if (ok) {
-      setQuickActions((prev) => prev.filter((x) => x.id !== a.id));
+      const next = quickActions.filter((x) => x.id !== a.id);
+      await persistQuickActions(next);
     }
   };
 
@@ -184,15 +162,15 @@ export function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.section}>
-          <Text style={styles.greeting}>{greetingByTimeRu()}, {greetingName}</Text>
-          <Text style={styles.headline}>Ваш дашборд</Text>
+          <Text style={styles.greeting}>{greetingByTime(new Date(), language)}, {greetingName}</Text>
+          <Text style={styles.headline}>{t('dashboard.headline')}</Text>
         </View>
 
         <View style={styles.section}>
           <View style={styles.activityHeader}>
-            <Text style={styles.sectionTitle}>Быстрые действия</Text>
+            <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
             <Pressable accessibilityRole="button" onPress={() => setAddOpen(true)}>
-              <Text style={styles.viewAll}>Добавить</Text>
+              <Text style={styles.viewAll}>{t('dashboard.add')}</Text>
             </Pressable>
           </View>
           <ScrollView
@@ -236,7 +214,7 @@ export function DashboardScreen() {
                 <MaterialIcons color={colors.onPrimary} name="add" size={28} />
               </LinearGradient>
               <Text numberOfLines={1} style={styles.quickTileLabel}>
-                Новое
+                {t('dashboard.newQuick')}
               </Text>
             </Pressable>
           </ScrollView>
@@ -255,71 +233,102 @@ export function DashboardScreen() {
               style={styles.addLead}
             >
               <MaterialIcons color={colors.onPrimaryContainer} name="person-add" size={32} />
-              <Text style={styles.addLeadText}>Добавить лида</Text>
+              <Text style={styles.addLeadText}>{t('dashboard.addLead')}</Text>
             </LinearGradient>
           </Pressable>
           <View style={styles.quickCol}>
             <Pressable
               accessibilityRole="button"
-              onPress={openTasks}
+              onPress={() => openTaskCreate(t('dashboard.call'))}
               style={({ pressed }) => [styles.smallAction, pressed && { opacity: 0.9 }]}
             >
               <View style={[styles.smallIconBg, { backgroundColor: `${colors.tertiary}18` }]}>
                 <MaterialIcons color={colors.tertiary} name="call" size={22} />
               </View>
-              <Text style={styles.smallActionLabel}>Звонок</Text>
+              <Text style={styles.smallActionLabel}>{t('dashboard.call')}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={openTasks}
+              onPress={() => openTaskCreate(t('dashboard.meeting'))}
               style={({ pressed }) => [styles.smallAction, pressed && { opacity: 0.9 }]}
             >
               <View style={[styles.smallIconBg, { backgroundColor: `${colors.secondary}18` }]}>
                 <MaterialIcons color={colors.secondary} name="event" size={22} />
               </View>
-              <Text style={styles.smallActionLabel}>Встреча</Text>
+              <Text style={styles.smallActionLabel}>{t('dashboard.meeting')}</Text>
             </Pressable>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Сводка эффективности</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.efficiencySummary')}</Text>
           <View style={styles.bento}>
             <View style={styles.salesCard}>
               <View style={styles.salesRow}>
-                <Text style={styles.mutedLabel}>Продажи всего</Text>
-                <View style={styles.badgeGreen}>
-                  <Text style={styles.badgeGreenText}>+12,5%</Text>
-                </View>
+                <Text style={styles.mutedLabel}>{t('dashboard.totalSales')}</Text>
+                {growthLabel ? (
+                  <View
+                    style={[
+                      styles.growthBadge,
+                      growthPositive ? styles.growthBadgePositive : styles.growthBadgeNegative,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.growthBadgeText,
+                        growthPositive ? styles.growthBadgeTextPositive : styles.growthBadgeTextNegative,
+                      ]}
+                    >
+                      {growthLabel}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <View style={styles.salesAmountRow}>
                 <Text style={styles.salesAmount}>{formatMoney(dash?.monthSales ?? 0)}</Text>
-                <Text style={styles.salesSub}>за месяц</Text>
+                <Text style={styles.salesSub}>{t('dashboard.perMonth')}</Text>
               </View>
             </View>
             <View style={styles.metricsRow}>
-              <View style={styles.metricHalf}>
+              <View style={styles.metricThird}>
                 <MaterialIcons color={colors.primary} name="group" size={22} />
                 <Text style={styles.metricNum}>{dash?.newLeads ?? 0}</Text>
-                <Text style={styles.metricCap}>Новых лидов</Text>
+                <Text style={styles.metricCap}>{t('dashboard.newLeads')}</Text>
               </View>
-              <View style={styles.metricHalf}>
+              <View style={styles.metricThird}>
                 <MaterialIcons color={colors.secondary} name="assignment-turned-in" size={22} />
                 <Text style={styles.metricNum}>{dash?.activeTasks ?? 0}</Text>
-                <Text style={styles.metricCap}>Активных задач</Text>
+                <Text style={styles.metricCap}>{t('dashboard.activeTasks')}</Text>
+              </View>
+              <View style={styles.metricThird}>
+                <MaterialIcons color={colors.error} name="warning" size={22} />
+                <Text style={styles.metricNum}>{dash?.overdueTasks ?? 0}</Text>
+                <Text style={styles.metricCap}>{t('dashboard.overdueTasks')}</Text>
               </View>
             </View>
+            {dash?.dealsByStage?.countByStage ? (
+              <View style={styles.funnelRow}>
+                {DEAL_STAGES.map((stage: DealStage) => (
+                  <View key={stage} style={styles.funnelItem}>
+                    <Text style={styles.funnelCount}>
+                      {dash.dealsByStage?.countByStage[stage] ?? 0}
+                    </Text>
+                    <Text style={styles.funnelLabel}>{dealStageLabel(stage, language)}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         </View>
 
         <View style={styles.section}>
           <View style={styles.activityHeader}>
-            <Text style={styles.sectionTitle}>Недавняя активность</Text>
+            <Text style={styles.sectionTitle}>{t('dashboard.recentActivity')}</Text>
             <Pressable
               accessibilityRole="button"
               onPress={() => setActivityExpanded((v) => !v)}
             >
-              <Text style={styles.viewAll}>{activityExpanded ? 'Свернуть' : 'Все'}</Text>
+              <Text style={styles.viewAll}>{activityExpanded ? t('dashboard.collapse') : t('dashboard.viewAll')}</Text>
             </Pressable>
           </View>
           {dashError ? <Text style={styles.errorText}>{dashError}</Text> : null}
@@ -355,7 +364,9 @@ export function DashboardScreen() {
                     <Text style={styles.activityName}>{a.title}</Text>
                     <Text style={styles.activityDesc}>{a.description}</Text>
                   </View>
-                  <Text style={styles.activityTime}>{timeAgoShortRu(a.createdAtUtc)} назад</Text>
+                  <Text style={styles.activityTime}>
+                    {timeAgoShortRu(a.createdAtUtc)} {t('dashboard.agoSuffix')}
+                  </Text>
                 </View>
               );
             })}
@@ -374,7 +385,7 @@ export function DashboardScreen() {
             <Text style={styles.modalTitle}>Добавить действие</Text>
 
             <Text style={styles.modalLabel}>Название</Text>
-            <TextInput
+            <AppTextInput
               placeholder="Например: КП"
               placeholderTextColor={`${colors.onSurfaceVariant}99`}
               value={draftTitle}
@@ -441,10 +452,17 @@ export function DashboardScreen() {
                     return;
                   }
                   const id = `custom_${Date.now()}`;
-                  setQuickActions((prev) => [
-                    ...prev,
-                    { id, title, icon: draftIcon, gradient: draftGradient },
-                  ]);
+                  const next: QuickAction[] = [
+                    ...quickActions,
+                    {
+                      id,
+                      title,
+                      icon: draftIcon,
+                      gradient: draftGradient,
+                      gradientIdx: draftGradientIdx,
+                    },
+                  ];
+                  void persistQuickActions(next);
                   setDraftTitle('');
                   setDraftIcon('add');
                   setDraftGradientIdx(0);
@@ -505,11 +523,7 @@ function createDashboardStyles(colors: AppPalette) {
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    ...rnwShadow({ offset: { width: 0, height: 6 }, opacity: 0.12, radius: 12, elevation: 6 }),
   },
   quickTileLabel: {
     marginTop: 8,
@@ -525,11 +539,7 @@ function createDashboardStyles(colors: AppPalette) {
     borderRadius: 24,
     padding: 24,
     justifyContent: 'space-between',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 6,
+    ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 8 }, opacity: 0.2, radius: 16, elevation: 6 }),
   },
   addLeadText: {
     fontSize: 18,
@@ -548,11 +558,7 @@ function createDashboardStyles(colors: AppPalette) {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...rnwShadow({ offset: { width: 0, height: 1 }, opacity: 0.05, radius: 4, elevation: 2 }),
   },
   smallIconBg: {
     width: 40,
@@ -596,16 +602,26 @@ function createDashboardStyles(colors: AppPalette) {
     fontWeight: '600',
     color: colors.onSurfaceVariant,
   },
-  badgeGreen: {
-    backgroundColor: `${colors.tertiaryContainer}22`,
+  growthBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 999,
   },
-  badgeGreenText: {
+  growthBadgePositive: {
+    backgroundColor: `${colors.tertiaryContainer}22`,
+  },
+  growthBadgeNegative: {
+    backgroundColor: `${colors.error}18`,
+  },
+  growthBadgeText: {
     fontSize: 11,
     fontWeight: '800',
+  },
+  growthBadgeTextPositive: {
     color: colors.tertiary,
+  },
+  growthBadgeTextNegative: {
+    color: colors.error,
   },
   salesAmountRow: {
     flexDirection: 'row',
@@ -625,13 +641,37 @@ function createDashboardStyles(colors: AppPalette) {
   },
   metricsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 10,
   },
-  metricHalf: {
+  metricThird: {
     flex: 1,
     backgroundColor: colors.surfaceContainerLow,
-    borderRadius: 24,
-    padding: 20,
+    borderRadius: 20,
+    padding: 14,
+  },
+  funnelRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  funnelItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceContainerHighest,
+  },
+  funnelCount: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.onSurface,
+  },
+  funnelLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.onSurfaceVariant,
+    marginTop: 2,
+    textAlign: 'center',
   },
   metricNum: {
     fontSize: 26,
@@ -772,11 +812,7 @@ function createDashboardStyles(colors: AppPalette) {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    ...rnwShadow({ offset: { width: 0, height: 1 }, opacity: 0.05, radius: 3, elevation: 1 }),
   },
   activityMuted: {
     backgroundColor: colors.surfaceContainerLow,

@@ -27,7 +27,10 @@ builder.Services
         o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient(nameof(IntegrationJobsWorker));
+builder.Services.AddHttpClient(nameof(FxRatesService));
+builder.Services.AddSingleton<IFxRatesService, FxRatesService>();
 builder.Services
     .AddHealthChecks()
     .AddDbContextCheck<ExpogoDbContext>(name: "postgresql", tags: ["ready"]);
@@ -35,8 +38,13 @@ builder.Services
 builder.Services.AddDbContext<ExpogoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddScoped<IBillingEntitlementsService, BillingEntitlementsService>();
+builder.Services.AddScoped<IDemoSeedService, DemoSeedService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
+builder.Services.AddSingleton<IPaymentReceiptPdfService, PaymentReceiptPdfService>();
+builder.Services.AddScoped<IReportsAnalyticsService, ReportsAnalyticsService>();
+builder.Services.AddSingleton<IReportsPdfService, ReportsPdfService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantAccessor, CurrentTenantAccessor>();

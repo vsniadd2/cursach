@@ -1,8 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { getJson, patchJson } from '../api/requests';
-import type { NotificationsResponse } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
+import { useIsAuthenticated } from '../auth/useIsAuthenticated';
+import { useDataSync } from '../data/DataSyncContext';
 
 type NotificationsContextValue = {
   unreadCount: number;
@@ -15,22 +17,26 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(nul
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const auth = useAuth();
-  const isAuthed = !!auth.state.accessToken || !!auth.state.refreshToken;
+  const isAuthed = useIsAuthenticated();
+  const { subscribe } = useDataSync();
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const authRef = useRef(auth);
+  authRef.current = auth;
 
   const refresh = useCallback(async () => {
-    if (!isAuthed || auth.state.isHydrating) return;
+    const a = authRef.current;
+    if (!isAuthed || a.state.isHydrating) return;
     setLoading(true);
     try {
-      const data = await getJson<{ unreadCount: number }>(auth, '/notifications/unread-count');
+      const data = await getJson<{ unreadCount: number }>(a, '/notifications/unread-count');
       setUnreadCount(data.unreadCount);
     } catch {
       // ignore polling errors
     } finally {
       setLoading(false);
     }
-  }, [auth, isAuthed, auth.state.isHydrating]);
+  }, [isAuthed, auth.state.isHydrating]);
 
   const markAllRead = useCallback(async () => {
     await patchJson(auth, '/notifications/read-all', {});
@@ -47,6 +53,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(timer);
   }, [isAuthed, auth.state.isHydrating, refresh]);
 
+  useEffect(() => {
+    return subscribe(['notifications'], () => {
+      void refresh();
+    });
+  }, [subscribe, refresh]);
+
   const value = useMemo(
     () => ({ unreadCount, loading, refresh, markAllRead }),
     [unreadCount, loading, refresh, markAllRead],
@@ -61,4 +73,4 @@ export function useNotifications() {
   return ctx;
 }
 
-export type { NotificationsResponse };
+export type { NotificationsResponse } from '../api/types';

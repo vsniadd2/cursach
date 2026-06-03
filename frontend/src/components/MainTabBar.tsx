@@ -2,10 +2,12 @@ import { MaterialIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
+import { useI18n } from '../i18n/useI18n';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { rnwShadow } from '../utils/rnwShadow';
 
 const TAB_ICONS = {
   Dashboard: 'dashboard' as const,
@@ -17,12 +19,12 @@ const TAB_ICONS = {
 
 type TabName = keyof typeof TAB_ICONS;
 
-const LABELS: Record<TabName, string> = {
-  Dashboard: 'Главная',
-  Clients: 'Клиенты',
-  Deals: 'Сделки',
-  Tasks: 'Задачи',
-  More: 'Ещё',
+const TAB_KEYS: Record<TabName, string> = {
+  Dashboard: 'tabs.dashboard',
+  Clients: 'tabs.clients',
+  Deals: 'tabs.deals',
+  Tasks: 'tabs.tasks',
+  More: 'tabs.more',
 };
 
 function createStyles(colors: AppPalette) {
@@ -40,11 +42,7 @@ function createStyles(colors: AppPalette) {
       backgroundColor: `${colors.surfaceContainerLowest}F0`,
       borderTopLeftRadius: 32,
       borderTopRightRadius: 32,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 16,
-      elevation: 12,
+      ...rnwShadow({ offset: { width: 0, height: -4 }, opacity: 0.08, radius: 16, elevation: 12 }),
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: `${colors.outlineVariant}55`,
     },
@@ -73,8 +71,9 @@ function createStyles(colors: AppPalette) {
 }
 
 export function MainTabBar({ state, navigation }: BottomTabBarProps) {
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const colors = useAppColors();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
@@ -109,7 +108,7 @@ export function MainTabBar({ state, navigation }: BottomTabBarProps) {
               size={24}
             />
             <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
-              {LABELS[name] ?? route.name}
+              {t(TAB_KEYS[name] ?? route.name)}
             </Text>
           </Pressable>
         );

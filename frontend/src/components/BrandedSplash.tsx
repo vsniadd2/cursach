@@ -6,6 +6,7 @@ import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native
 import { APP_NAME } from '../constants/brand';
 
 import { lightColors } from '../theme/palettes';
+import { rnwShadow } from '../utils/rnwShadow';
 
 const MIN_VISIBLE_MS = 1700;
 
@@ -296,11 +297,7 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.45,
-    shadowRadius: 24,
-    elevation: 20,
+    ...rnwShadow({ offset: { width: 0, height: 16 }, opacity: 0.45, radius: 24, elevation: 20 }),
   },
   titleWrap: {
     flexDirection: 'row',

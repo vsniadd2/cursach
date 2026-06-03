@@ -15,6 +15,7 @@ public class ExpogoDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Deal> Deals => Set<Deal>();
+    public DbSet<SalesPipeline> SalesPipelines => Set<SalesPipeline>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<ActivityEvent> ActivityEvents => Set<ActivityEvent>();
     public DbSet<ContactEvent> ContactEvents => Set<ContactEvent>();
@@ -25,6 +26,7 @@ public class ExpogoDbContext : DbContext
     public DbSet<BillingSubscription> BillingSubscriptions => Set<BillingSubscription>();
     public DbSet<UsageMetric> UsageMetrics => Set<UsageMetric>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
+    public DbSet<SupportFaqItem> SupportFaqItems => Set<SupportFaqItem>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -101,6 +103,21 @@ public class ExpogoDbContext : DbContext
             .HasForeignKey(x => x.TenantId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Deal>()
+            .HasOne(x => x.Pipeline)
+            .WithMany(x => x.Deals)
+            .HasForeignKey(x => x.PipelineId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SalesPipeline>()
+            .HasOne(x => x.Tenant)
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SalesPipeline>()
+            .HasIndex(x => new { x.TenantId, x.Name });
+
         modelBuilder.Entity<TaskItem>()
             .HasOne(x => x.Tenant)
             .WithMany()
@@ -124,6 +141,9 @@ public class ExpogoDbContext : DbContext
 
         modelBuilder.Entity<Deal>()
             .HasIndex(x => new { x.TenantId, x.Stage });
+
+        modelBuilder.Entity<Deal>()
+            .HasIndex(x => new { x.TenantId, x.PipelineId, x.Stage });
 
         modelBuilder.Entity<Client>()
             .HasIndex(x => new { x.TenantId, x.Company, x.FullName });
@@ -155,6 +175,9 @@ public class ExpogoDbContext : DbContext
 
         modelBuilder.Entity<WebhookEndpoint>()
             .HasIndex(x => new { x.TenantId, x.IsActive });
+
+        modelBuilder.Entity<SupportFaqItem>()
+            .HasIndex(x => new { x.TenantId, x.SortOrder });
 
         modelBuilder.Entity<SupportTicket>()
             .HasIndex(x => new { x.TenantId, x.Status, x.CreatedAtUtc });

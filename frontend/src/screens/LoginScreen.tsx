@@ -1,10 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { AuthPrimaryButton, AuthShell, useAuthFormStyles } from '../auth/AuthShell';
 import { useAuth } from '../auth/AuthContext';
+import { AppTextInput } from '../components/AppTextInput';
 import { APP_NAME } from '../constants/brand';
+import { useAppColors } from '../theme/AppPreferencesContext';
 
 type Props = {
   goToRegister: () => void;
@@ -48,22 +50,25 @@ export function LoginScreen({ goToRegister }: Props) {
       }
     >
       <Text style={authStyles.label}>Логин</Text>
-      <TextInput
+      <AppTextInput
         autoCapitalize="none"
         placeholder="admin"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="next"
         value={username}
         onChangeText={setUsername}
         style={authStyles.input}
       />
 
       <Text style={authStyles.label}>Пароль</Text>
-      <TextInput
+      <AppTextInput
         secureTextEntry
         placeholder="••••••••"
         placeholderTextColor={`${colors.onSurfaceVariant}99`}
+        returnKey="done"
         value={password}
         onChangeText={setPassword}
+        onSubmitEditing={() => void onSubmit()}
         style={authStyles.input}
       />
 

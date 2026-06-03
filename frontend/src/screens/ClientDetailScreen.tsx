@@ -3,17 +3,19 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View, Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect, useMemo, useState } from 'react';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
+import { useCallback, useMemo, useState } from 'react';
 
 import { ClientAvatarImage } from '../components/ClientAvatarImage';
 import { useAuth } from '../auth/AuthContext';
 import { getJson } from '../api/requests';
 import type { ClientDetailResponse } from '../api/types';
-import type { DealsStackParamList } from '../navigation/types';
-import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
+import type { ClientsStackParamList } from '../navigation/types';
+import { useAppColors, useAppPreferences, useDealStageLabel } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
-import { formatDateRu } from '../utils/locale';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { formatDate } from '../utils/locale';
+import { rnwShadow } from '../utils/rnwShadow';
 
 function timeAgoRu(dtIso: string) {
   const dt = new Date(dtIso);
@@ -26,26 +28,49 @@ function timeAgoRu(dtIso: string) {
   return `${d} дн назад`;
 }
 
+type TabNavigator = {
+  navigate: (name: string, params?: Record<string, unknown>) => void;
+};
+
 type Props = {
-  navigation: NativeStackNavigationProp<DealsStackParamList, 'ClientDetail'>;
-  route: RouteProp<DealsStackParamList, 'ClientDetail'>;
+  navigation: NativeStackNavigationProp<ClientsStackParamList, 'ClientDetail'>;
+  route: RouteProp<ClientsStackParamList, 'ClientDetail'>;
 };
 
 export function ClientDetailScreen({ navigation, route }: Props) {
   const colors = useAppColors();
-  const { formatMoney } = useAppPreferences();
+  const { formatMoney, language } = useAppPreferences();
+  const stageLabel = useDealStageLabel();
   const styles = useMemo(() => createClientDetailStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 100 + insets.bottom;
   const auth = useAuth();
 
   const [data, setData] = useState<ClientDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const clientId = route.params.clientId;
+
+  const getTabNavigator = useCallback((): TabNavigator | undefined => {
+    return navigation.getParent() as TabNavigator | undefined;
+  }, [navigation]);
+
+  const openDealEdit = useCallback(
+    (params: { dealId?: number; clientId: number }) => {
+      const tabNav = getTabNavigator();
+      if (!tabNav?.navigate) {
+        Alert.alert('Навигация', 'Не удалось открыть редактор сделки.');
+        return;
+      }
+      tabNav.navigate('Deals', { screen: 'DealEdit', params });
+    },
+    [getTabNavigator],
+  );
+
+  const loadClient = useCallback(() => {
     let alive = true;
     setError(null);
-    getJson<ClientDetailResponse>(auth, `/clients/${route.params.clientId}`)
+    getJson<ClientDetailResponse>(auth, `/clients/${clientId}`)
       .then((d) => {
         if (!alive) return;
         setData(d);
@@ -57,7 +82,9 @@ export function ClientDetailScreen({ navigation, route }: Props) {
     return () => {
       alive = false;
     };
-  }, [auth, route.params.clientId]);
+  }, [auth, clientId]);
+
+  useAutoRefresh(['clients'], loadClient);
 
   const client = data?.client;
   const deal = data?.activeDeal;
@@ -86,9 +113,7 @@ export function ClientDetailScreen({ navigation, route }: Props) {
   const onHeaderMenuPress = () => {
     const id = client?.id ?? route.params.clientId;
     const subtitle = client?.fullName ?? `Клиент #${id}`;
-    const tabNav = navigation.getParent() as
-      | { navigate: (name: string, params?: Record<string, unknown>) => void }
-      | undefined;
+    const tabNav = getTabNavigator();
     if (!tabNav?.navigate) {
       Alert.alert('Навигация', 'Не удалось перейти в другой раздел.');
       return;
@@ -134,6 +159,8 @@ export function ClientDetailScreen({ navigation, route }: Props) {
           </Pressable>
           <ClientAvatarImage
             clientId={clientIdForAvatar}
+            fullName={client?.fullName}
+            avatarHue={client?.avatarHue}
             size={32}
             style={styles.headerAvatar}
             uri={client?.avatarSmallUrl}
@@ -150,6 +177,8 @@ export function ClientDetailScreen({ navigation, route }: Props) {
           <View style={styles.avatarRing}>
             <ClientAvatarImage
               clientId={clientIdForAvatar}
+              fullName={client?.fullName}
+              avatarHue={client?.avatarHue}
               size={96}
               style={styles.avatarLarge}
               uri={client?.avatarLargeUrl ?? client?.avatarSmallUrl}
@@ -200,7 +229,15 @@ export function ClientDetailScreen({ navigation, route }: Props) {
         <View style={styles.section}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Данные по активной сделке</Text>
-            <Pressable>
+            <Pressable
+              onPress={() => {
+                if (!deal?.id) {
+                  Alert.alert('Нет активной сделки', 'Создайте сделку для этого клиента.');
+                  return;
+                }
+                openDealEdit({ dealId: deal.id, clientId });
+              }}
+            >
               <Text style={styles.editLink}>Изменить</Text>
             </Pressable>
           </View>
@@ -211,7 +248,7 @@ export function ClientDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.metaText}>Этап воронки</Text>
               </View>
               <View style={styles.pill}>
-                <Text style={styles.pillText}>{deal?.stage ?? '—'}</Text>
+                <Text style={styles.pillText}>{deal?.stage ? stageLabel(deal.stage) : '—'}</Text>
               </View>
             </View>
             <View style={styles.metaRow}>
@@ -220,7 +257,7 @@ export function ClientDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.metaText}>Ожидаемое закрытие</Text>
               </View>
               <Text style={styles.metaRight}>
-                {deal?.expectedCloseDateUtc ? formatDateRu(deal.expectedCloseDateUtc) : '—'}
+                {deal?.expectedCloseDateUtc ? formatDate(deal.expectedCloseDateUtc, language) : '—'}
               </Text>
             </View>
             <View style={[styles.metaRow, styles.metaRowAlt]}>
@@ -375,11 +412,7 @@ function createClientDetailStyles(colors: AppPalette) {
     flex: 1,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
+    ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 6 }, opacity: 0.2, radius: 12, elevation: 6 }),
   },
   btnPrimary: {
     flex: 1,

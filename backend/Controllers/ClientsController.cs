@@ -16,11 +16,16 @@ public class ClientsController : ControllerBase
 {
     private readonly ExpogoDbContext _db;
     private readonly IAuditTrailService _audit;
+    private readonly IBillingEntitlementsService _billing;
 
-    public ClientsController(ExpogoDbContext db, IAuditTrailService audit)
+    public ClientsController(
+        ExpogoDbContext db,
+        IAuditTrailService audit,
+        IBillingEntitlementsService billing)
     {
         _db = db;
         _audit = audit;
+        _billing = billing;
     }
 
     public record ClientsListResponse(
@@ -36,6 +41,7 @@ public class ClientsController : ControllerBase
         string Company,
         string? RoleTitle,
         string? AvatarSmallUrl,
+        int AvatarHue,
         DateTime CreatedAtUtc
     );
 
@@ -119,6 +125,7 @@ public class ClientsController : ControllerBase
                 c.Company,
                 c.RoleTitle,
                 c.AvatarSmallUrl,
+                c.AvatarHue,
                 c.CreatedAtUtc
             ))
             .ToListAsync(ct);
@@ -174,6 +181,7 @@ public class ClientsController : ControllerBase
                 client.WorkEmail,
                 client.AvatarLargeUrl,
                 client.AvatarSmallUrl,
+                avatarHue = client.AvatarHue != 0 ? client.AvatarHue : ClientAvatarColor.DefaultHue(client.Id),
                 client.CreatedAtUtc,
             },
             activeDeal,
@@ -188,6 +196,11 @@ public class ClientsController : ControllerBase
         var tenantId = this.RequireTenantId();
         if (!ModelState.IsValid)
             return ValidationProblem(ModelState);
+
+        var limitCheck = await _billing.EnsureCanAddContactAsync(tenantId, ct);
+        var limitError = this.ToBillingActionResult(limitCheck);
+        if (limitError is not null)
+            return limitError;
 
         var fullName = req.FullName.Trim();
         var company = req.Company.Trim();
@@ -208,9 +221,11 @@ public class ClientsController : ControllerBase
         };
         _db.Clients.Add(client);
         await _db.SaveChangesAsync(ct);
+        client.AvatarHue = ClientAvatarColor.AssignHue(client.Id, client.FullName, client.Company);
+        await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "clients.create", nameof(Client), client.Id.ToString(), null, client, ct);
 
-        return CreatedAtAction(nameof(Get), new { id = client.Id }, new { id = client.Id });
+        return CreatedAtAction(nameof(Get), new { id = client.Id }, new { id = client.Id, avatarHue = client.AvatarHue });
     }
 
     [HttpPut("{id:int}")]

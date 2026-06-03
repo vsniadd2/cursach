@@ -2,18 +2,24 @@ import { MaterialIcons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect, useMemo, useState } from 'react';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AppHeader } from '../components/AppHeader';
 import { ClientAvatarImage } from '../components/ClientAvatarImage';
 import { useAuth } from '../auth/AuthContext';
 import type { DealsStackParamList } from '../navigation/types';
-import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
+import { useI18n } from '../i18n/useI18n';
+import { useAppColors, useAppPreferences, useDealStageLabel } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
-import { getJson, patchJson } from '../api/requests';
-import type { DealsPipelineResponse, DealStage, PipelineDeal } from '../api/types';
-import { dealStageLabel } from '../utils/locale';
+import { getJson, patchJson, postJson } from '../api/requests';
+import type { DealsPipelineResponse, DealStage, PipelineDeal, SalesPipelineItem } from '../api/types';
+import { resolveBillingErrorMessage } from '../utils/billingErrors';
+import { AppTextInput } from '../components/AppTextInput';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useDataSync } from '../data/DataSyncContext';
+import { DEAL_STAGES } from '../utils/locale';
+import { rnwShadow } from '../utils/rnwShadow';
 
 type Props = {
   navigation: NativeStackNavigationProp<DealsStackParamList, 'DealsPipeline'>;
@@ -21,33 +27,105 @@ type Props = {
 
 export function DealsPipelineScreen({ navigation }: Props) {
   const colors = useAppColors();
+  const { t } = useI18n();
   const { formatMoney } = useAppPreferences();
+  const stageLabel = useDealStageLabel();
   const styles = useMemo(() => createPipelineStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 120 + insets.bottom;
   const auth = useAuth();
+  const { invalidate } = useDataSync();
 
   const [data, setData] = useState<DealsPipelineResponse | null>(null);
+  const [pipelines, setPipelines] = useState<SalesPipelineItem[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(null);
+  const [newPipelineName, setNewPipelineName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const reload = () => {
+  const loadPipelines = useCallback(() => {
+    getJson<{ items: SalesPipelineItem[] }>(auth, '/pipelines')
+      .then((res) => {
+        setPipelines(res.items);
+        setSelectedPipelineId((prev) => {
+          if (prev != null && res.items.some((p) => p.id === prev)) return prev;
+          const def = res.items.find((p) => p.isDefault) ?? res.items[0];
+          return def?.id ?? null;
+        });
+      })
+      .catch(() => {});
+  }, [auth]);
+
+  const loadPipeline = useCallback(() => {
+    if (selectedPipelineId == null) return;
     let alive = true;
     setError(null);
-    getJson<DealsPipelineResponse>(auth, '/deals/pipeline')
+    getJson<DealsPipelineResponse>(auth, `/deals/pipeline?pipelineId=${selectedPipelineId}`)
       .then((d) => {
         if (!alive) return;
         setData(d);
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+        setError(e instanceof Error ? e.message : t('common.loadError'));
       });
     return () => {
       alive = false;
     };
-  };
+  }, [auth, selectedPipelineId, t]);
 
-  useEffect(() => reload(), [auth]);
+  useAutoRefresh(['deals', 'billing'], loadPipelines);
+
+  useEffect(() => {
+    if (selectedPipelineId == null) return;
+    return loadPipeline();
+  }, [selectedPipelineId, loadPipeline]);
+
+  const createPipeline = useCallback(async () => {
+    const name = newPipelineName.trim();
+    if (!name) return;
+    setError(null);
+    try {
+      const created = await postJson<{ id: number; name: string }>(auth, '/pipelines', { name });
+      setNewPipelineName('');
+      setSelectedPipelineId(created.id);
+      loadPipelines();
+      invalidate('billing', 'audit');
+    } catch (e) {
+      setError(resolveBillingErrorMessage(e, t));
+    }
+  }, [auth, invalidate, loadPipelines, newPipelineName, t]);
+
+  const moveDealStage = useCallback((dealId: number, fromStage: DealStage, toStage: DealStage) => {
+    if (fromStage === toStage) return;
+    setData((prev) => {
+      if (!prev) return prev;
+      const deal = prev.stages[fromStage]?.find((x) => x.id === dealId);
+      if (!deal) return prev;
+      const nextStages: Record<DealStage, PipelineDeal[]> = {
+        Lead: [...(prev.stages.Lead ?? [])],
+        Negotiation: [...(prev.stages.Negotiation ?? [])],
+        Closed: [...(prev.stages.Closed ?? [])],
+      };
+      nextStages[fromStage] = nextStages[fromStage].filter((x) => x.id !== dealId);
+      nextStages[toStage] = [...nextStages[toStage], { ...deal, stage: toStage }];
+      return { ...prev, stages: nextStages };
+    });
+  }, []);
+
+  const changeDealStage = useCallback(
+    async (deal: PipelineDeal, fromStage: DealStage, toStage: DealStage) => {
+      if (fromStage === toStage) return;
+      const snapshot = data;
+      moveDealStage(deal.id, fromStage, toStage);
+      try {
+        await patchJson<null>(auth, `/deals/${deal.id}/stage`, { stage: toStage });
+        invalidate('deals', 'dashboard', 'reports', 'audit');
+      } catch {
+        setData(snapshot);
+      }
+    },
+    [auth, data, invalidate, moveDealStage],
+  );
 
   const stages = useMemo(() => {
     return (data?.stages ?? {}) as Record<DealStage, PipelineDeal[]>;
@@ -61,27 +139,64 @@ export function DealsPipelineScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <Text style={styles.heroEyebrow}>Стратегия портфеля</Text>
-          <Text style={styles.heroTitle}>Воронка сделок</Text>
+          <Text style={styles.heroEyebrow}>{t('deals.eyebrow')}</Text>
+          <Text style={styles.heroTitle}>{t('deals.title')}</Text>
+          {pipelines.length > 0 ? (
+            <ScrollView
+              contentContainerStyle={styles.pipelineRow}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            >
+              {pipelines.map((p) => {
+                const active = p.id === selectedPipelineId;
+                return (
+                  <Pressable
+                    key={p.id}
+                    accessibilityRole="button"
+                    onPress={() => setSelectedPipelineId(p.id)}
+                    style={[styles.pipelineChip, active && styles.pipelineChipActive]}
+                  >
+                    <Text style={[styles.pipelineChipText, active && styles.pipelineChipTextActive]}>
+                      {p.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+          {pipelines.length > 0 ? (
+            <View style={styles.addPipelineRow}>
+              <AppTextInput
+                value={newPipelineName}
+                onChangeText={setNewPipelineName}
+                placeholder={t('deals.pipelineName')}
+                placeholderTextColor={`${colors.onSurfaceVariant}99`}
+                style={styles.pipelineInput}
+              />
+              <Pressable accessibilityRole="button" onPress={() => void createPipeline()} style={styles.addPipelineBtn}>
+                <Text style={styles.addPipelineBtnText}>{t('deals.addPipeline')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <ScrollView
             contentContainerStyle={styles.chipsRow}
             horizontal
             showsHorizontalScrollIndicator={false}
           >
             <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Сумма</Text>
+              <Text style={styles.chipLabel}>{t('deals.sum')}</Text>
               <Text style={[styles.chipValue, { color: colors.primary }]}>
                 {formatMoney(data?.totals.total ?? 0)}
               </Text>
             </View>
             <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Взвешенно</Text>
+              <Text style={styles.chipLabel}>{t('deals.weighted')}</Text>
               <Text style={[styles.chipValue, { color: colors.secondary }]}>
                 {formatMoney(data?.totals.weighted ?? 0)}
               </Text>
             </View>
             <View style={styles.chip}>
-              <Text style={styles.chipLabel}>Средний чек</Text>
+              <Text style={styles.chipLabel}>{t('deals.avgCheck')}</Text>
               <Text style={[styles.chipValue, { color: colors.onSurface }]}>
                 {formatMoney(data?.totals.avg ?? 0)}
               </Text>
@@ -108,7 +223,7 @@ export function DealsPipelineScreen({ navigation }: Props) {
                 <View style={styles.stageTitleRow}>
                   <View style={[styles.dot, { backgroundColor: dotColor }]} />
                   <Text style={styles.stageTitle}>
-                    {dealStageLabel(stage)} <Text style={styles.stageCount}>({list.length})</Text>
+                    {stageLabel(stage)} <Text style={styles.stageCount}>({list.length})</Text>
                   </Text>
                 </View>
               </View>
@@ -118,29 +233,16 @@ export function DealsPipelineScreen({ navigation }: Props) {
                   key={d.id}
                   onPress={() => navigation.navigate('ClientDetail', { clientId: d.client.clientId })}
                   onLongPress={() => {
-                    Alert.alert('Стадия сделки', d.title, [
-                      { text: 'Отмена' },
+                    Alert.alert(t('deals.dealAlert'), d.title, [
+                      { text: t('common.cancel'), style: 'cancel' },
                       {
-                        text: 'Лид',
-                        onPress: async () => {
-                          await patchJson<null>(auth, `/deals/${d.id}/stage`, { stage: 'Lead' });
-                          reload();
-                        },
+                        text: t('deals.edit'),
+                        onPress: () => navigation.navigate('DealEdit', { dealId: d.id }),
                       },
-                      {
-                        text: 'Переговоры',
-                        onPress: async () => {
-                          await patchJson<null>(auth, `/deals/${d.id}/stage`, { stage: 'Negotiation' });
-                          reload();
-                        },
-                      },
-                      {
-                        text: 'Закрыто',
-                        onPress: async () => {
-                          await patchJson<null>(auth, `/deals/${d.id}/stage`, { stage: 'Closed' });
-                          reload();
-                        },
-                      },
+                      ...DEAL_STAGES.map((s) => ({
+                        text: stageLabel(s),
+                        onPress: () => void changeDealStage(d, stage, s),
+                      })),
                     ]);
                   }}
                   style={({ pressed }) => [
@@ -151,13 +253,25 @@ export function DealsPipelineScreen({ navigation }: Props) {
                   {stage === 'Negotiation' ? <View style={styles.negAccent} /> : null}
 
                   <View style={styles.dealTop}>
-                    <View>
-                      <Text style={styles.dealName}>{d.title}</Text>
-                      <Text style={styles.dealCompany}>{d.client.company}</Text>
+                    <View style={styles.dealTitleBlock}>
+                      <Text style={styles.dealName} numberOfLines={2}>
+                        {d.title}
+                      </Text>
+                      <Text style={styles.dealCompany} numberOfLines={1}>
+                        {d.client.company}
+                      </Text>
                     </View>
-                    <View style={stage === 'Negotiation' ? styles.tagOrange : styles.tagBlue}>
-                      <Text style={stage === 'Negotiation' ? styles.tagOrangeText : styles.tagBlueText}>
-                        {dealStageLabel(stage)}
+                    <View
+                      style={[
+                        styles.dealStageTag,
+                        stage === 'Negotiation' ? styles.tagOrange : styles.tagBlue,
+                      ]}
+                    >
+                      <Text
+                        style={stage === 'Negotiation' ? styles.tagOrangeText : styles.tagBlueText}
+                        numberOfLines={1}
+                      >
+                        {stageLabel(stage)}
                       </Text>
                     </View>
                   </View>
@@ -180,6 +294,8 @@ export function DealsPipelineScreen({ navigation }: Props) {
                       <View style={styles.avatars}>
                         <ClientAvatarImage
                           clientId={d.client.clientId}
+                          fullName={d.client.fullName}
+                          avatarHue={d.client.avatarHue}
                           size={28}
                           style={styles.avatarSm}
                           uri={d.client.avatarSmallUrl}
@@ -239,7 +355,61 @@ function createPipelineStyles(colors: AppPalette) {
     fontWeight: '800',
     color: colors.onSurface,
     letterSpacing: -0.5,
+    marginBottom: 12,
+  },
+  pipelineRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  pipelineChip: {
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: `${colors.outlineVariant}44`,
+    backgroundColor: colors.surfaceContainerLowest,
+  },
+  pipelineChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}18`,
+  },
+  pipelineChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.onSurfaceVariant,
+  },
+  pipelineChipTextActive: {
+    color: colors.primary,
+  },
+  addPipelineRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginBottom: 16,
+    alignItems: 'center',
+  },
+  pipelineInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: `${colors.outlineVariant}44`,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.onSurface,
+    backgroundColor: colors.surfaceContainerLowest,
+  },
+  addPipelineBtn: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: colors.primary,
+  },
+  addPipelineBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.onPrimary,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -315,33 +485,40 @@ function createPipelineStyles(colors: AppPalette) {
     marginBottom: 16,
     borderWidth: 1,
     borderColor: `${colors.outlineVariant}14`,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...rnwShadow({ offset: { width: 0, height: 1 }, opacity: 0.05, radius: 4, elevation: 2 }),
   },
   dealTop: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 10,
     marginBottom: 12,
+  },
+  dealTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 2,
   },
   dealName: {
     fontSize: 17,
     fontWeight: '800',
     color: colors.onSurface,
     letterSpacing: -0.3,
+    flexShrink: 1,
   },
   dealCompany: {
     fontSize: 14,
     color: colors.onSurfaceVariant,
     marginTop: 4,
   },
+  dealStageTag: {
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    maxWidth: '38%',
+  },
   tagBlue: {
     backgroundColor: colors.blue50,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 999,
   },
   tagBlueText: {
@@ -377,6 +554,7 @@ function createPipelineStyles(colors: AppPalette) {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: 24,
     padding: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: `${colors.outlineVariant}22`,
     overflow: 'hidden',
@@ -404,8 +582,8 @@ function createPipelineStyles(colors: AppPalette) {
   },
   tagOrange: {
     backgroundColor: colors.orange50,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 999,
   },
   tagOrangeText: {
@@ -499,11 +677,7 @@ function createPipelineStyles(colors: AppPalette) {
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
+    ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 8 }, opacity: 0.35, radius: 16, elevation: 12 }),
   },
   });
 }

@@ -2,10 +2,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useMemo } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 
 import { MainTabBar } from '../components/MainTabBar';
 import { useAuth } from '../auth/AuthContext';
+import { useIsAuthenticated } from '../auth/useIsAuthenticated';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
@@ -24,7 +25,13 @@ const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 function AppTabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }} tabBar={(props) => <MainTabBar {...props} />}>
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        ...(Platform.OS === 'web' ? { detachInactiveScreens: false } : {}),
+      }}
+      tabBar={(props) => <MainTabBar {...props} />}
+    >
       <Tab.Screen component={DashboardScreen} name="Dashboard" />
       <Tab.Screen component={ClientsStackNavigator} name="Clients" />
       <Tab.Screen component={DealsStackNavigator} name="Deals" />
@@ -49,7 +56,7 @@ function AuthFlow() {
 
 export function RootNavigator() {
   const { state } = useAuth();
-  const isAuthed = !!state.accessToken || !!state.refreshToken;
+  const isAuthed = useIsAuthenticated();
   const { theme, colors } = useAppPreferences();
 
   const navTheme = useMemo(() => {
@@ -75,7 +82,7 @@ export function RootNavigator() {
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
       ) : (
-        <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Navigator key={isAuthed ? 'app' : 'auth'} screenOptions={{ headerShown: false }}>
           {isAuthed ? (
             <>
               <RootStack.Screen component={AppTabs} name="App" />

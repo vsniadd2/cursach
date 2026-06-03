@@ -1,76 +1,25 @@
-ЗАПУСК ПРОЕКТА (кратко)
+Запуск (из корня cursach)
 
-
-
-1) Docker (PostgreSQL + API, ПК)
-
+1. Backend + БД
    docker compose up -d --build
-
-   Из корня: expogo-cursach
-
    API: http://localhost:5278
+   После изменений только бэкенда (чек PDF, API, миграции):
+     docker compose build api && docker compose up -d api
 
-
-
-2) Backend .NET (ПК, если запускаете без Docker API)
-
-   cd backend
-
-   dotnet run
-
-   API: http://localhost:5278
-
-
-
-3) Frontend Expo (ПК → выбор устройства)
-
+2. Frontend
    cd frontend
-
    npm start
 
+   Web (ПК): npm run web  или  w  →  http://localhost:8081
+   Если белый экран / старые ошибки: npm run web:clear
+   (макет iPhone 16 Pro: 402×874 pt, масштаб ≈ реальный 71.5 мм)
+   Телефон: Expo Go, тот же Wi‑Fi → QR из терминала
+   Android-эмулятор: npm run android  или  a
+   iOS-симулятор (macOS): npm run ios  или  i
 
+Сброс БД: docker compose down -v && docker compose up -d --build
 
-   Перед стартом выполняется scripts/seed.js (prestart): логин admin и вызов /seed/run.
-
-   Учётные записи по умолчанию (общая организация Экспого):
-
-     • admin / 123456 — администратор (управление пользователями, аудит, интеграции…)
-
-     • user  / 123456 — обычный пользователь (клиенты, сделки, задачи)
-
-   Регистрация всегда создаёт обычного пользователя (Member) в той же организации.
-
-   Адрес API: http://localhost:5278 (захардкожен в seed.js и src/api/config.ts).
-
-
-
-   • Телефон (iOS/Android): приложение Expo Go, тот же Wi‑Fi что ПК → Scan QR из Expo Go.
-
-   • Браузер на этом же ПК: npm run web (или в меню Expo клавиша w)
-
-   • Эмулятор Android: npm run android  (или клавиша a)
-
-   • Симулятор iOS: только на macOS — npm run ios  (или клавиша i)
-
-
-
-Порядок: обычно 1 → 3. Пункт 2 нужен только если API запускается локально без Docker.
-
-
-
-База данных: API при старте выполняет MigrateAsync() и seed admin/user. Если сменили схему или старые данные мешают:
-
-   docker compose down -v
-
-   docker compose up -d --build
-
-   cd frontend && node scripts/seed.js
-
-
-
-Настройки: БД, JWT, DefaultTenant и SeedUsers — в appsettings*.json. Файлов .env нет.
-
-
-
-Деньги: суммы сделок в БД в USD; в интерфейсе — в валюте профиля (по умолчанию BYN).
-
+Демо-данные (6 пользователей, клиенты, сделки, задачи):
+  cd frontend && npm run seed:demo
+  Пересоздать CRM при уже заполненной БД: npm run seed:force
+  Логины: admin, maria, dmitry, elena, alexey, natalia — пароль 123456

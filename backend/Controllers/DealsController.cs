@@ -18,18 +18,21 @@ public class DealsController : ControllerBase
     private readonly IAuditTrailService _audit;
     private readonly INotificationService _notifications;
     private readonly ICurrentTenantAccessor _current;
+    private readonly IBillingEntitlementsService _billing;
 
     public DealsController(
         ExpogoDbContext db,
         IAuditTrailService audit,
         INotificationService notifications,
-        ICurrentTenantAccessor current
+        ICurrentTenantAccessor current,
+        IBillingEntitlementsService billing
     )
     {
         _db = db;
         _audit = audit;
         _notifications = notifications;
         _current = current;
+        _billing = billing;
     }
 
     public record DealListItem(
@@ -67,6 +70,8 @@ public class DealsController : ControllerBase
 
         [MaxLength(128)]
         public string? DecisionMaker { get; set; }
+
+        public int? PipelineId { get; set; }
     }
 
     public record DealStageRequest(DealStage Stage);
@@ -145,6 +150,58 @@ public class DealsController : ControllerBase
         return Ok(new DealsListResponse(page, pageSize, total, items));
     }
 
+    [HttpGet("pipeline")]
+    [Authorize(Policy = CrmPermissions.DealsRead)]
+    public async Task<ActionResult<object>> Pipeline([FromQuery] int? pipelineId, CancellationToken ct)
+    {
+        var tenantId = this.RequireTenantId();
+        var effectivePipelineId = pipelineId ?? await _billing.GetDefaultPipelineIdAsync(tenantId, ct);
+
+        var pipelineExists = await _db.SalesPipelines.AnyAsync(
+            x => x.Id == effectivePipelineId && x.TenantId == tenantId,
+            ct);
+        if (!pipelineExists)
+            return NotFound(new { message = "Воронка не найдена" });
+
+        var deals = await _db.Deals
+            .Include(d => d.Client)
+            .Where(d => d.TenantId == tenantId && d.PipelineId == effectivePipelineId)
+            .OrderBy(d => d.Stage)
+            .ThenByDescending(d => d.Amount)
+            .Select(d => new
+            {
+                d.Id,
+                d.Title,
+                d.Stage,
+                d.Amount,
+                d.ProbabilityPct,
+                client = new
+                {
+                    d.ClientId,
+                    d.Client.FullName,
+                    d.Client.Company,
+                    d.Client.AvatarSmallUrl,
+                    avatarHue = d.Client.AvatarHue != 0 ? d.Client.AvatarHue : (d.ClientId * 47) % 360,
+                }
+            })
+            .ToListAsync(ct);
+
+        var grouped = deals
+            .GroupBy(x => x.Stage)
+            .ToDictionary(g => g.Key.ToString(), g => g.ToList());
+
+        var total = deals.Sum(x => x.Amount);
+        var weighted = deals.Sum(x => x.Amount * (x.ProbabilityPct / 100m));
+        var avg = deals.Count == 0 ? 0m : deals.Average(x => x.Amount);
+
+        return Ok(new
+        {
+            pipelineId = effectivePipelineId,
+            totals = new { total, weighted, avg },
+            stages = grouped
+        });
+    }
+
     [HttpGet("{id:int}")]
     [Authorize(Policy = CrmPermissions.DealsRead)]
     public async Task<ActionResult<object>> Get(int id, CancellationToken ct)
@@ -184,10 +241,18 @@ public class DealsController : ControllerBase
         var title = req.Title.Trim();
         if (title.Length == 0) return BadRequest(new { message = "Название не может быть пустым" });
 
+        var pipelineId = req.PipelineId ?? await _billing.GetDefaultPipelineIdAsync(tenantId, ct);
+        var pipelineExists = await _db.SalesPipelines.AnyAsync(
+            x => x.Id == pipelineId && x.TenantId == tenantId,
+            ct);
+        if (!pipelineExists)
+            return BadRequest(new { message = "Воронка не найдена" });
+
         var deal = new Deal
         {
             TenantId = tenantId,
             ClientId = req.ClientId,
+            PipelineId = pipelineId,
             Title = title,
             Stage = req.Stage,
             Amount = req.Amount,
@@ -265,25 +330,30 @@ public class DealsController : ControllerBase
 
         if (req.Stage == DealStage.Negotiation)
         {
-            _db.Tasks.Add(new TaskItem
+            var plan = await _billing.GetPlanAsync(tenantId, ct);
+            if (plan.AutoTasks)
             {
-                TenantId = tenantId,
-                Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
-                Title = $"Follow-up по сделке: {deal.Title}",
-                Description = "Автозадача по правилу стадии Negotiation",
-                Priority = TaskPriority.Medium,
-                Done = false,
-                CreatedAtUtc = DateTime.UtcNow,
-            });
+                _db.Tasks.Add(new TaskItem
+                {
+                    TenantId = tenantId,
+                    Date = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)),
+                    Title = $"Follow-up по сделке: {deal.Title}",
+                    Description = "Автозадача по правилу стадии Negotiation",
+                    Priority = TaskPriority.Medium,
+                    Done = false,
+                    CreatedAtUtc = DateTime.UtcNow,
+                });
+            }
         }
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "deals.stage", nameof(Deal), deal.Id.ToString(), new { Stage = before }, new { Stage = req.Stage }, ct);
+        var uiLanguage = await GetCurrentUserLanguageAsync(ct);
         await _notifications.NotifyTenantExceptAsync(
             tenantId,
             _current.UserId,
             NotificationTypes.DealStageChanged,
-            "Смена стадии сделки",
-            $"«{deal.Title}» → {DealStageLabelRu(req.Stage)}",
+            DealStageLabels.DealStageChangedTitle(uiLanguage),
+            $"«{deal.Title}» → {DealStageLabels.Label(req.Stage, uiLanguage)}",
             nameof(Deal),
             deal.Id.ToString(),
             $"deal-stage:{deal.Id}:{req.Stage}",
@@ -328,48 +398,6 @@ public class DealsController : ControllerBase
         return Ok(new { updated });
     }
 
-    [HttpGet("pipeline")]
-    [Authorize(Policy = CrmPermissions.DealsRead)]
-    public async Task<ActionResult<object>> Pipeline(CancellationToken ct)
-    {
-        var tenantId = this.RequireTenantId();
-        var deals = await _db.Deals
-            .Include(d => d.Client)
-            .Where(d => d.TenantId == tenantId)
-            .OrderBy(d => d.Stage)
-            .ThenByDescending(d => d.Amount)
-            .Select(d => new
-            {
-                d.Id,
-                d.Title,
-                d.Stage,
-                d.Amount,
-                d.ProbabilityPct,
-                client = new
-                {
-                    d.ClientId,
-                    d.Client.FullName,
-                    d.Client.Company,
-                    d.Client.AvatarSmallUrl,
-                }
-            })
-            .ToListAsync(ct);
-
-        var grouped = deals
-            .GroupBy(x => x.Stage)
-            .ToDictionary(g => g.Key.ToString(), g => g.ToList());
-
-        var total = deals.Sum(x => x.Amount);
-        var weighted = deals.Sum(x => x.Amount * (x.ProbabilityPct / 100m));
-        var avg = deals.Count == 0 ? 0m : deals.Average(x => x.Amount);
-
-        return Ok(new
-        {
-            totals = new { total, weighted, avg },
-            stages = grouped
-        });
-    }
-
     private void RecordClosedDealMeter(int tenantId, decimal amountUsd)
     {
         var now = DateTime.UtcNow;
@@ -408,12 +436,15 @@ public class DealsController : ControllerBase
         };
     }
 
-    private static string DealStageLabelRu(DealStage stage) => stage switch
+    private async Task<string> GetCurrentUserLanguageAsync(CancellationToken ct)
     {
-        DealStage.Lead => "Лид",
-        DealStage.Negotiation => "Переговоры",
-        DealStage.Closed => "Закрыто",
-        _ => stage.ToString(),
-    };
+        var userId = _current.UserId;
+        if (userId is null) return "ru";
+        var lang = await _db.Users.AsNoTracking()
+            .Where(x => x.Id == userId.Value)
+            .Select(x => x.UiLanguage)
+            .SingleOrDefaultAsync(ct);
+        return string.IsNullOrWhiteSpace(lang) ? "ru" : lang;
+    }
 }
 

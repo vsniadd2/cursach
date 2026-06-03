@@ -2,13 +2,16 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { APP_NAME } from '../constants/brand';
+import { useBillingSubscription } from '../data/BillingSubscriptionContext';
 import { useOpenNotifications } from '../navigation/useOpenNotifications';
 import { useNotifications } from '../notifications/NotificationsContext';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { planDisplayName } from '../utils/billingPlans';
+import { rnwShadow } from '../utils/rnwShadow';
 
 type AppHeaderProps = {
   onNotificationsPress?: () => void;
@@ -59,11 +62,7 @@ function createStyles(colors: AppPalette) {
       borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: colors.primary,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.25,
-      shadowRadius: 6,
-      elevation: 4,
+      ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 3 }, opacity: 0.25, radius: 6, elevation: 4 }),
     },
     markText: {
       fontSize: 20,
@@ -82,6 +81,13 @@ function createStyles(colors: AppPalette) {
       fontSize: 12,
       fontWeight: '600',
       color: colors.onSurfaceVariant,
+    },
+    planStatus: {
+      marginTop: 3,
+      fontSize: 12,
+      fontWeight: '700',
+      color: '#000000',
+      letterSpacing: 0.3,
     },
     iconBtn: {
       width: 40,
@@ -122,13 +128,19 @@ function createStyles(colors: AppPalette) {
 }
 
 export function AppHeader({ onNotificationsPress, onBackPress }: AppHeaderProps) {
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const colors = useAppColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const openNotifications = useOpenNotifications();
   const { unreadCount } = useNotifications();
+  const { subscription, loading: billingLoading } = useBillingSubscription();
   const onBellPress = onNotificationsPress ?? openNotifications;
   const badgeLabel = unreadCount > 9 ? '9+' : String(unreadCount);
+
+  const planLabel = useMemo(() => {
+    if (billingLoading || !subscription) return null;
+    return planDisplayName(subscription.planName || subscription.planCode);
+  }, [billingLoading, subscription]);
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
@@ -164,6 +176,7 @@ export function AppHeader({ onNotificationsPress, onBackPress }: AppHeaderProps)
           <View style={styles.left}>
             <Text style={styles.title}>{APP_NAME}</Text>
             <Text style={styles.subtitle}>клиенты, сделки и задачи</Text>
+            {planLabel ? <Text style={styles.planStatus}>{planLabel}</Text> : null}
           </View>
         </Pressable>
         <Pressable

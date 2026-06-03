@@ -1,14 +1,17 @@
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { getJson } from '../api/requests';
 import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import type { MoreStackParamList } from '../navigation/types';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useI18n } from '../i18n/useI18n';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { resolveBillingErrorMessage } from '../utils/billingErrors';
 
 type RulesResponse = {
   items: Array<{
@@ -47,14 +50,15 @@ type Props = NativeStackScreenProps<MoreStackParamList, 'MoreAutomations'>;
 export function AutomationsScreen({ navigation }: Props) {
   const colors = useAppColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const auth = useAuth();
+  const { t } = useI18n();
 
   const [data, setData] = useState<RulesResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadAutomations = useCallback(() => {
     let alive = true;
     setLoading(true);
     setError(null);
@@ -65,7 +69,7 @@ export function AutomationsScreen({ navigation }: Props) {
       })
       .catch((e) => {
         if (!alive) return;
-        setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+        setError(resolveBillingErrorMessage(e, t));
       })
       .finally(() => {
         if (!alive) return;
@@ -74,14 +78,16 @@ export function AutomationsScreen({ navigation }: Props) {
     return () => {
       alive = false;
     };
-  }, [auth]);
+  }, [auth, t]);
+
+  useAutoRefresh(['integrations'], loadAutomations);
 
   return (
     <View style={styles.root}>
       <AppHeader onBackPress={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 90 + insets.bottom }]}>
-        <Text style={styles.title}>Автоматизации</Text>
-        <Text style={styles.sub}>Правила «триггер → действие» для вашей организации.</Text>
+        <Text style={styles.title}>{t('more.automations')}</Text>
+        <Text style={styles.sub}>{t('more.automationsDesc')}</Text>
         {error ? <Text style={styles.err}>{error}</Text> : null}
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {(data?.items ?? []).map((r) => (

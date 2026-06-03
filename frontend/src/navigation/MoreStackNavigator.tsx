@@ -4,7 +4,6 @@ import { AutomationsScreen } from '../screens/AutomationsScreen';
 import { AuditLogScreen } from '../screens/AuditLogScreen';
 import { BillingScreen } from '../screens/BillingScreen';
 import { IntegrationsScreen } from '../screens/IntegrationsScreen';
-import { MorePlaceholderScreen } from '../screens/MorePlaceholderScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -26,11 +25,6 @@ export function MoreStackNavigator() {
       <Stack.Screen component={AutomationsScreen} name="MoreAutomations" options={{ title: 'Автоматизации' }} />
       <Stack.Screen component={AuditLogScreen} name="MoreAuditLog" options={{ title: 'Аудит' }} />
       <Stack.Screen component={SupportScreen} name="MoreSupport" options={{ title: 'Поддержка' }} />
-      <Stack.Screen
-        component={MorePlaceholderScreen}
-        name="MorePlaceholder"
-        options={{ title: 'Раздел' }}
-      />
     </Stack.Navigator>
   );
 }

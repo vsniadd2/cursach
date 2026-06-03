@@ -13,7 +13,7 @@ namespace ExpogoCrm.Api.Controllers.More;
 [ApiController]
 [Route("team")]
 [Authorize]
-public class TeamController(ExpogoDbContext db, IAuditTrailService audit, INotificationService notifications) : ControllerBase
+public class TeamController(ExpogoDbContext db, IAuditTrailService audit, INotificationService notifications, IBillingEntitlementsService billing) : ControllerBase
 {
     private static readonly HashSet<TenantRole> AllowedRoles = [TenantRole.Admin, TenantRole.Member];
 
@@ -57,6 +57,11 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit, INotif
             return BadRequest(new { message = "Допустимые роли: Admin и Member." });
 
         var tenantId = this.RequireTenantId();
+        var roleCheck = await billing.EnsureFeatureAsync(tenantId, BillingFeature.RoleManagement, ct);
+        var roleError = this.ToBillingActionResult(roleCheck);
+        if (roleError is not null)
+            return roleError;
+
         var actorUserId = ParseUserId(User);
         if (actorUserId is not null && actorUserId.Value == req.UserId)
             return BadRequest(new { message = "Нельзя изменить собственную роль." });
@@ -102,6 +107,11 @@ public class TeamController(ExpogoDbContext db, IAuditTrailService audit, INotif
     public async Task<ActionResult> BlockUser([FromBody] BlockUserRequest req, CancellationToken ct)
     {
         var tenantId = this.RequireTenantId();
+        var roleCheck = await billing.EnsureFeatureAsync(tenantId, BillingFeature.RoleManagement, ct);
+        var roleError = this.ToBillingActionResult(roleCheck);
+        if (roleError is not null)
+            return roleError;
+
         var actorUserId = ParseUserId(User);
         if (actorUserId is not null && actorUserId.Value == req.UserId)
             return BadRequest(new { message = "Нельзя заблокировать собственный аккаунт." });

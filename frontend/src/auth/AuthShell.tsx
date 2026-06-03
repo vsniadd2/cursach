@@ -1,12 +1,14 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { APP_NAME } from '../constants/brand';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
+import { rnwShadow } from '../utils/rnwShadow';
+import { useLayoutDimensions } from '../web/useLayoutDimensions';
 import { useWebIphonePreview } from '../web/WebIphonePreviewContext';
 
 type Props = {
@@ -131,6 +133,7 @@ function createShellStyles(colors: AppPalette) {
     bgWrap: {
       ...StyleSheet.absoluteFillObject,
       opacity: 0.06,
+      pointerEvents: 'none',
     },
     scroll: {
       flex: 1,
@@ -165,11 +168,7 @@ function createShellStyles(colors: AppPalette) {
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: `${colors.outlineVariant}22`,
-      shadowColor: '#000',
-      shadowOpacity: 0.08,
-      shadowRadius: 24,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: 10,
+      ...rnwShadow({ opacity: 0.08, radius: 24, offset: { width: 0, height: 12 }, elevation: 10 }),
     },
     cardWide: {
       flexDirection: 'row',
@@ -213,11 +212,7 @@ function createShellStyles(colors: AppPalette) {
       borderRadius: 999,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: colors.primary,
-      shadowOpacity: 0.2,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 8,
+      ...rnwShadow({ color: colors.primary, opacity: 0.2, radius: 16, offset: { width: 0, height: 10 }, elevation: 8 }),
     },
     primaryBtnText: {
       fontSize: 16,
@@ -233,11 +228,9 @@ function createShellStyles(colors: AppPalette) {
 export function AuthShell({ title, subtitle, footer, children }: Props) {
   const colors = useAppColors();
   const styles = useMemo(() => createShellStyles(colors), [colors]);
-  const win = useWindowDimensions();
+  const { width, height } = useLayoutDimensions();
   const preview = useWebIphonePreview();
-  const width = preview.active ? preview.layoutWidth : win.width;
-  const height = preview.active ? preview.layoutHeight : win.height;
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const showLeft = Platform.OS === 'web' && !preview.active && width >= 900;
   const isCompact = width < 380 || height < 700;
   const isNarrow = width < 420;
@@ -276,7 +269,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
         </View>
       </View>
 
-      <View style={[styles.bgWrap, { pointerEvents: 'none' }]}>
+      <View style={styles.bgWrap}>
         <LinearGradient
           colors={[colors.primary, colors.primaryContainer]}
           end={{ x: 1, y: 1 }}
@@ -297,6 +290,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
           { paddingTop: 72 + insets.top + 24, paddingBottom: Math.max(insets.bottom, 18) + 18 },
         ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         style={styles.scroll}
       >

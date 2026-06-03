@@ -1,23 +1,30 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Image, StyleSheet, Text, View, type StyleProp, type ImageStyle } from 'react-native';
 
-import { clientAvatarFallbackBackground } from '../utils/clientAvatar';
+import { clientAvatarBackground, clientInitials } from '../utils/clientAvatar';
 
 type Props = {
   clientId: number;
+  fullName?: string | null;
+  avatarHue?: number | null;
   /** Если задано и не пустое — показываем кастомное фото из CRM. */
   uri?: string | null;
   size: number;
   style?: StyleProp<ImageStyle>;
 };
 
-/** Аватар по умолчанию — уникальный номер клиента (#id) на цветном круге. */
-export function ClientAvatarImage({ clientId, uri, size, style }: Props) {
+/** Аватар: фото или инициалы на уникальном цветном фоне. */
+export function ClientAvatarImage({ clientId, fullName, avatarHue, uri, size, style }: Props) {
   const trimmed = uri?.trim();
   const hasCustom = !!(trimmed && trimmed.length > 0);
   const [imgFailed, setImgFailed] = useState(false);
 
-  const fallbackBg = useMemo(() => clientAvatarFallbackBackground(clientId), [clientId]);
+  const hue = avatarHue != null && avatarHue > 0 ? avatarHue : 0;
+  const fallbackBg = useMemo(() => clientAvatarBackground(hue, clientId), [hue, clientId]);
+  const initials = useMemo(
+    () => (fullName?.trim() ? clientInitials(fullName) : `#${clientId}`),
+    [fullName, clientId],
+  );
   const baseSize = useMemo(
     () => ({
       width: size,
@@ -26,8 +33,7 @@ export function ClientAvatarImage({ clientId, uri, size, style }: Props) {
     }),
     [size],
   );
-  const label = `#${clientId}`;
-  const fontSize = Math.max(7, Math.min(16, Math.round(size * 0.32)));
+  const fontSize = Math.max(8, Math.min(18, Math.round(size * 0.36)));
 
   const onImageError = useCallback(() => {
     setImgFailed(true);
@@ -36,12 +42,12 @@ export function ClientAvatarImage({ clientId, uri, size, style }: Props) {
   if (!hasCustom || imgFailed) {
     return (
       <View
-        accessibilityLabel={`Аватар клиента ${clientId}`}
+        accessibilityLabel={`Аватар клиента ${fullName?.trim() || clientId}`}
         accessibilityRole="image"
         style={[baseSize, styles.badge, { backgroundColor: fallbackBg }, style as object]}
       >
         <Text style={[styles.badgeText, { fontSize }]} numberOfLines={1} adjustsFontSizeToFit>
-          {label}
+          {initials}
         </Text>
       </View>
     );
@@ -49,7 +55,7 @@ export function ClientAvatarImage({ clientId, uri, size, style }: Props) {
 
   return (
     <Image
-      accessibilityLabel={`Аватар клиента ${clientId}`}
+      accessibilityLabel={`Аватар клиента ${fullName?.trim() || clientId}`}
       source={{ uri: trimmed }}
       onError={onImageError}
       style={[baseSize, style]}

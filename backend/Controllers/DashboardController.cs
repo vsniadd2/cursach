@@ -25,9 +25,18 @@ public class DashboardController : ControllerBase
     {
         var tenantId = this.RequireTenantId();
         var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var prevMonthStart = monthStart.AddMonths(-1);
         var monthSales = await _db.Deals
             .Where(d => d.TenantId == tenantId && d.Stage == DealStage.Closed && d.CreatedAtUtc >= monthStart)
             .SumAsync(d => (decimal?)d.Amount, ct) ?? 0m;
+        var prevMonthSales = await _db.Deals
+            .Where(d => d.TenantId == tenantId && d.Stage == DealStage.Closed
+                && d.CreatedAtUtc >= prevMonthStart && d.CreatedAtUtc < monthStart)
+            .SumAsync(d => (decimal?)d.Amount, ct) ?? 0m;
+
+        decimal? monthSalesGrowthPct = prevMonthSales == 0m
+            ? monthSales == 0m ? null : 100m
+            : Math.Round((monthSales - prevMonthSales) / prevMonthSales * 100m, 1);
 
         var actTake = activitiesTake is null or < 1 or > 200 ? 10 : activitiesTake.Value;
 
@@ -70,6 +79,7 @@ public class DashboardController : ControllerBase
         return Ok(new
         {
             monthSales,
+            monthSalesGrowthPct,
             newLeads,
             activeTasks,
             overdueTasks,

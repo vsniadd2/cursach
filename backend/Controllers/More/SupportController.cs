@@ -11,18 +11,20 @@ namespace ExpogoCrm.Api.Controllers.More;
 [ApiController]
 [Route("support")]
 [Authorize]
-public class SupportController(ExpogoDbContext db, ICurrentTenantAccessor current, IAuditTrailService audit) : ControllerBase
+public class SupportController(ExpogoDbContext db, ICurrentTenantAccessor current, IAuditTrailService audit, IBillingEntitlementsService billing) : ControllerBase
 {
-    private static readonly object[] Faq =
-    [
-        new { id = "onboarding", question = "Как подключить команду?", answer = "Откройте раздел Команда и назначьте роли участникам." },
-        new { id = "deals", question = "Как работают стадии сделок?", answer = "Lead -> Negotiation -> Closed. Переходы валидируются сервером." },
-        new { id = "security", question = "Где смотреть аудит?", answer = "В разделе Аудит доступны последние изменения данных и операций." },
-    ];
-
     [HttpGet("faq")]
     [Authorize(Policy = CrmPermissions.SupportRead)]
-    public ActionResult<object> GetFaq() => Ok(new { items = Faq });
+    public async Task<ActionResult<object>> GetFaq(CancellationToken ct)
+    {
+        var tenantId = this.RequireTenantId();
+        var items = await db.SupportFaqItems.AsNoTracking()
+            .Where(x => x.TenantId == null || x.TenantId == tenantId)
+            .OrderBy(x => x.SortOrder)
+            .Select(x => new { id = x.Id.ToString(), x.Question, x.Answer })
+            .ToListAsync(ct);
+        return Ok(new { items });
+    }
 
     public sealed class TicketRequest
     {
@@ -53,6 +55,8 @@ public class SupportController(ExpogoDbContext db, ICurrentTenantAccessor curren
         if (string.IsNullOrWhiteSpace(req.Subject) || string.IsNullOrWhiteSpace(req.Body))
             return BadRequest(new { message = "Заполните тему и описание обращения." });
 
+        var plan = await billing.GetPlanAsync(tenantId, ct);
+
         var ticket = new SupportTicket
         {
             TenantId = tenantId,
@@ -60,6 +64,7 @@ public class SupportController(ExpogoDbContext db, ICurrentTenantAccessor curren
             Subject = req.Subject.Trim(),
             Body = req.Body.Trim(),
             Status = "open",
+            IsVip = plan.VipSupport,
             CreatedAtUtc = DateTime.UtcNow,
         };
         db.SupportTickets.Add(ticket);

@@ -79,6 +79,10 @@ namespace ExpogoCrm.Api.Migrations
                         .HasColumnType("character varying(8)")
                         .HasDefaultValue("BYN");
 
+                    b.Property<string>("DashboardQuickActionsJson")
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)");
+
                     b.Property<string>("Email")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -86,12 +90,12 @@ namespace ExpogoCrm.Api.Migrations
                     b.Property<int>("FailedLoginAttempts")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsBlocked")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("FullName")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<bool>("IsBlocked")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("LockoutEndUtc")
                         .HasColumnType("timestamp with time zone");
@@ -100,6 +104,11 @@ namespace ExpogoCrm.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
+
+                    b.Property<string>("UiLanguage")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
 
                     b.Property<string>("UiTheme")
                         .IsRequired()
@@ -274,6 +283,9 @@ namespace ExpogoCrm.Api.Migrations
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)");
 
+                    b.Property<int>("AvatarHue")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Company")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -371,6 +383,9 @@ namespace ExpogoCrm.Api.Migrations
                     b.Property<DateTime?>("ExpectedCloseDateUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("PipelineId")
+                        .HasColumnType("integer");
+
                     b.Property<int>("ProbabilityPct")
                         .HasColumnType("integer");
 
@@ -389,9 +404,13 @@ namespace ExpogoCrm.Api.Migrations
 
                     b.HasIndex("ClientId");
 
+                    b.HasIndex("PipelineId");
+
                     b.HasIndex("TenantId", "Stage");
 
                     b.HasIndex("TenantId", "ClientId", "Stage");
+
+                    b.HasIndex("TenantId", "PipelineId", "Stage");
 
                     b.ToTable("Deals");
                 });
@@ -479,6 +498,66 @@ namespace ExpogoCrm.Api.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("ExpogoCrm.Api.Data.SalesPipeline", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Name");
+
+                    b.ToTable("SalesPipelines");
+                });
+
+            modelBuilder.Entity("ExpogoCrm.Api.Data.SupportFaqItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Answer")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "SortOrder");
+
+                    b.ToTable("SupportFaqItems");
+                });
+
             modelBuilder.Entity("ExpogoCrm.Api.Data.SupportTicket", b =>
                 {
                     b.Property<int>("Id")
@@ -494,6 +573,9 @@ namespace ExpogoCrm.Api.Migrations
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsVip")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -518,62 +600,6 @@ namespace ExpogoCrm.Api.Migrations
                     b.HasIndex("TenantId", "Status", "CreatedAtUtc");
 
                     b.ToTable("SupportTickets");
-                });
-
-            modelBuilder.Entity("ExpogoCrm.Api.Data.UserNotification", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("Body")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DedupeKey")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("EntityId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("EntityType")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(48)
-                        .HasColumnType("character varying(48)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId", "IsRead", "CreatedAtUtc");
-
-                    b.HasIndex("TenantId", "UserId", "DedupeKey");
-
-                    b.ToTable("UserNotifications");
                 });
 
             modelBuilder.Entity("ExpogoCrm.Api.Data.TaskItem", b =>
@@ -715,6 +741,62 @@ namespace ExpogoCrm.Api.Migrations
                     b.ToTable("UsageMetrics");
                 });
 
+            modelBuilder.Entity("ExpogoCrm.Api.Data.UserNotification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DedupeKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("EntityId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("EntityType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(48)
+                        .HasColumnType("character varying(48)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "UserId", "DedupeKey");
+
+                    b.HasIndex("UserId", "IsRead", "CreatedAtUtc");
+
+                    b.ToTable("UserNotifications");
+                });
+
             modelBuilder.Entity("ExpogoCrm.Api.Data.WebhookEndpoint", b =>
                 {
                     b.Property<int>("Id")
@@ -842,6 +924,12 @@ namespace ExpogoCrm.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ExpogoCrm.Api.Data.SalesPipeline", "Pipeline")
+                        .WithMany("Deals")
+                        .HasForeignKey("PipelineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
                         .WithMany()
                         .HasForeignKey("TenantId")
@@ -849,6 +937,8 @@ namespace ExpogoCrm.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
+
+                    b.Navigation("Pipeline");
 
                     b.Navigation("Tenant");
                 });
@@ -875,7 +965,7 @@ namespace ExpogoCrm.Api.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ExpogoCrm.Api.Data.SupportTicket", b =>
+            modelBuilder.Entity("ExpogoCrm.Api.Data.SalesPipeline", b =>
                 {
                     b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
                         .WithMany()
@@ -883,18 +973,19 @@ namespace ExpogoCrm.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ExpogoCrm.Api.Data.AppUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Tenant");
-
-                    b.Navigation("User");
                 });
 
-            modelBuilder.Entity("ExpogoCrm.Api.Data.UserNotification", b =>
+            modelBuilder.Entity("ExpogoCrm.Api.Data.SupportFaqItem", b =>
+                {
+                    b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("ExpogoCrm.Api.Data.SupportTicket", b =>
                 {
                     b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
                         .WithMany()
@@ -954,6 +1045,25 @@ namespace ExpogoCrm.Api.Migrations
                     b.Navigation("Tenant");
                 });
 
+            modelBuilder.Entity("ExpogoCrm.Api.Data.UserNotification", b =>
+                {
+                    b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ExpogoCrm.Api.Data.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("ExpogoCrm.Api.Data.WebhookEndpoint", b =>
                 {
                     b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
@@ -976,6 +1086,11 @@ namespace ExpogoCrm.Api.Migrations
                 {
                     b.Navigation("ContactEvents");
 
+                    b.Navigation("Deals");
+                });
+
+            modelBuilder.Entity("ExpogoCrm.Api.Data.SalesPipeline", b =>
+                {
                     b.Navigation("Deals");
                 });
 

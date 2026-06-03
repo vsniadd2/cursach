@@ -1,12 +1,19 @@
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from '@expo-google-fonts/inter';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { LogBox, Platform, StyleSheet, Text, View } from 'react-native';
+
+LogBox.ignoreLogs([
+  'props.pointerEvents is deprecated',
+  '"shadow*" style props are deprecated',
+]);
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/auth/AuthProvider';
 import { NotificationsProvider } from './src/notifications/NotificationsContext';
+import { BillingSubscriptionProvider } from './src/data/BillingSubscriptionContext';
+import { DataSyncProvider } from './src/data/DataSyncContext';
 import { BrandedSplash } from './src/components/BrandedSplash';
 import { AppPreferencesProvider, useAppPreferences } from './src/theme/AppPreferencesContext';
 import { Iphone16ProFrame } from './src/web/Iphone16ProFrame';
@@ -48,25 +55,31 @@ export default function App() {
     );
   }
 
-  return (
-    <SafeAreaProvider>
-      <AuthProvider>
+  const appTree = (
+    <AuthProvider>
+      <DataSyncProvider>
         <AppPreferencesProvider>
-          <NotificationsProvider>
-            <ThemedChrome>
-              {Platform.OS === 'web' ? (
-                <Iphone16ProFrame>
-                  <RootNavigator />
-                </Iphone16ProFrame>
-              ) : (
-                <RootNavigator />
-              )}
-            </ThemedChrome>
-          </NotificationsProvider>
+          <BillingSubscriptionProvider>
+            <NotificationsProvider>
+              <ThemedChrome>
+                {Platform.OS === 'web' ? (
+                  <Iphone16ProFrame>
+                    <RootNavigator />
+                  </Iphone16ProFrame>
+                ) : (
+                  <SafeAreaProvider>
+                    <RootNavigator />
+                  </SafeAreaProvider>
+                )}
+              </ThemedChrome>
+            </NotificationsProvider>
+          </BillingSubscriptionProvider>
         </AppPreferencesProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+      </DataSyncProvider>
+    </AuthProvider>
   );
+
+  return appTree;
 }
 
 const styles = StyleSheet.create({

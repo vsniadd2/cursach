@@ -22,7 +22,7 @@ public class Tenant
     public required string Slug { get; set; }
 
     [MaxLength(32)]
-    public string PlanCode { get; set; } = "starter";
+    public string PlanCode { get; set; } = "free";
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
@@ -52,6 +52,14 @@ public class AppUser
     /// <summary>ISO 4217 для отображения сумм (набор допустимых кодов — в AuthMeController).</summary>
     [MaxLength(8)]
     public string CurrencyCode { get; set; } = "BYN";
+
+    /// <summary>Язык UI: ru | en.</summary>
+    [MaxLength(8)]
+    public string UiLanguage { get; set; } = "ru";
+
+    /// <summary>JSON-массив быстрых действий дашборда (см. DashboardQuickActionDto).</summary>
+    [MaxLength(4096)]
+    public string? DashboardQuickActionsJson { get; set; }
 
     public int FailedLoginAttempts { get; set; }
     public DateTime? LockoutEndUtc { get; set; }
@@ -128,6 +136,9 @@ public class Client
     [MaxLength(512)]
     public string? AvatarSmallUrl { get; set; }
 
+    /// <summary>Оттенок аватара 0–359, назначается при создании клиента.</summary>
+    public int AvatarHue { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public List<Deal> Deals { get; set; } = [];
@@ -141,6 +152,21 @@ public enum DealStage
     Closed = 2,
 }
 
+public class SalesPipeline
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public Tenant Tenant { get; set; } = null!;
+
+    [MaxLength(128)]
+    public required string Name { get; set; }
+
+    public bool IsDefault { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public List<Deal> Deals { get; set; } = [];
+}
+
 public class Deal
 {
     public int Id { get; set; }
@@ -149,6 +175,9 @@ public class Deal
 
     public int ClientId { get; set; }
     public Client Client { get; set; } = null!;
+
+    public int PipelineId { get; set; }
+    public SalesPipeline Pipeline { get; set; } = null!;
 
     [MaxLength(160)]
     public required string Title { get; set; }
@@ -340,7 +369,7 @@ public class BillingSubscription
     public Tenant Tenant { get; set; } = null!;
 
     [MaxLength(32)]
-    public string PlanCode { get; set; } = "starter";
+    public string PlanCode { get; set; } = "free";
 
     [MaxLength(32)]
     public string Status { get; set; } = "active";
@@ -364,6 +393,22 @@ public class UsageMetric
     public DateTime RecordedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
+public class SupportFaqItem
+{
+    public int Id { get; set; }
+
+    public int? TenantId { get; set; }
+    public Tenant? Tenant { get; set; }
+
+    [MaxLength(256)]
+    public required string Question { get; set; }
+
+    [MaxLength(2000)]
+    public required string Answer { get; set; }
+
+    public int SortOrder { get; set; }
+}
+
 public class SupportTicket
 {
     public int Id { get; set; }
@@ -379,6 +424,8 @@ public class SupportTicket
 
     [MaxLength(32)]
     public string Status { get; set; } = "open";
+
+    public bool IsVip { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

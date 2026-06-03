@@ -38,7 +38,7 @@ public static class DatabaseBootstrap
             {
                 Name = tenantName,
                 Slug = tenantSlug,
-                PlanCode = "starter",
+                PlanCode = "free",
             };
             db.Tenants.Add(tenant);
             await db.SaveChangesAsync(ct);
@@ -55,11 +55,53 @@ public static class DatabaseBootstrap
             db.BillingSubscriptions.Add(new BillingSubscription
             {
                 TenantId = tenant.Id,
-                PlanCode = "starter",
+                PlanCode = "free",
                 Status = "active",
-                SeatsLimit = 25,
-                StorageGbLimit = 10,
+                SeatsLimit = 1,
+                StorageGbLimit = 1,
+                CurrentPeriodEndUtc = DateTime.UtcNow.AddYears(100),
             });
+            await db.SaveChangesAsync(ct);
+        }
+        else
+        {
+            var subs = await db.BillingSubscriptions.Where(x => x.TenantId == tenant.Id).ToListAsync(ct);
+            foreach (var sub in subs.Where(s => s.PlanCode == "starter"))
+            {
+                sub.PlanCode = "free";
+                sub.SeatsLimit = 1;
+                sub.StorageGbLimit = 1;
+            }
+            if (tenant.PlanCode == "starter")
+                tenant.PlanCode = "free";
+            if (subs.Count > 0)
+                await db.SaveChangesAsync(ct);
+        }
+
+        await EnsureDefaultPipelineAsync(db, tenant.Id, ct);
+
+        if (!await db.SupportFaqItems.AnyAsync(x => x.TenantId == null, ct))
+        {
+            db.SupportFaqItems.AddRange(
+                new SupportFaqItem
+                {
+                    Question = "Как подключить команду?",
+                    Answer = "Откройте раздел Команда и назначьте роли участникам.",
+                    SortOrder = 1,
+                },
+                new SupportFaqItem
+                {
+                    Question = "Как работают стадии сделок?",
+                    Answer = "Lead -> Negotiation -> Closed. Переходы валидируются сервером.",
+                    SortOrder = 2,
+                },
+                new SupportFaqItem
+                {
+                    Question = "Где смотреть аудит?",
+                    Answer = "В разделе Аудит доступны последние изменения данных и операций.",
+                    SortOrder = 3,
+                }
+            );
             await db.SaveChangesAsync(ct);
         }
 
@@ -109,6 +151,33 @@ public static class DatabaseBootstrap
                 await db.SaveChangesAsync(ct);
             }
         }
+    }
+
+    private static async Task EnsureDefaultPipelineAsync(ExpogoDbContext db, int tenantId, CancellationToken ct)
+    {
+        var pipeline = await db.SalesPipelines
+            .SingleOrDefaultAsync(x => x.TenantId == tenantId && x.IsDefault, ct);
+
+        if (pipeline is null)
+        {
+            pipeline = new SalesPipeline
+            {
+                TenantId = tenantId,
+                Name = "Основная",
+                IsDefault = true,
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            db.SalesPipelines.Add(pipeline);
+            await db.SaveChangesAsync(ct);
+        }
+
+        var orphanDeals = await db.Deals
+            .Where(x => x.TenantId == tenantId && x.PipelineId == 0)
+            .ToListAsync(ct);
+        foreach (var deal in orphanDeals)
+            deal.PipelineId = pipeline.Id;
+        if (orphanDeals.Count > 0)
+            await db.SaveChangesAsync(ct);
     }
 
     public static async Task<Tenant?> FindDefaultTenantAsync(ExpogoDbContext db, IConfiguration configuration, CancellationToken ct = default)

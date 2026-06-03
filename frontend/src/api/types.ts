@@ -1,3 +1,10 @@
+export type DashboardQuickAction = {
+  id: string;
+  title: string;
+  icon: string;
+  gradientIdx: number;
+};
+
 export type AuthMeResponse = {
   id: number;
   username: string;
@@ -5,7 +12,9 @@ export type AuthMeResponse = {
   email: string | null;
   theme: string;
   currency: string;
+  language: string;
   tenantRole: string;
+  dashboardQuickActions: DashboardQuickAction[];
 };
 
 export type DealStage = 'Lead' | 'Negotiation' | 'Closed';
@@ -20,6 +29,7 @@ export type ClientsListResponse = {
     company: string;
     roleTitle: string | null;
     avatarSmallUrl: string | null;
+    avatarHue: number;
     createdAtUtc: string;
   }>;
 };
@@ -35,16 +45,26 @@ export type PipelineDeal = {
     fullName: string;
     company: string;
     avatarSmallUrl: string | null;
+    avatarHue?: number;
   };
 };
 
 export type DealsPipelineResponse = {
+  pipelineId?: number;
   totals: { total: number; weighted: number; avg: number };
   stages: Record<DealStage, PipelineDeal[]>;
 };
 
+export type SalesPipelineItem = {
+  id: number;
+  name: string;
+  isDefault: boolean;
+  createdAtUtc: string;
+};
+
 export type DashboardResponse = {
   monthSales: number;
+  monthSalesGrowthPct?: number | null;
   newLeads: number;
   activeTasks: number;
   overdueTasks?: number;
@@ -89,6 +109,7 @@ export type ClientDetailResponse = {
     workEmail: string | null;
     avatarLargeUrl: string | null;
     avatarSmallUrl: string | null;
+    avatarHue?: number;
     createdAtUtc?: string;
   };
   activeDeal: {

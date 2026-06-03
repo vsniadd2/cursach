@@ -23,7 +23,6 @@ export type MoreStackParamList = {
   MoreIntegrations: undefined;
   MoreAutomations: undefined;
   MoreAuditLog: undefined;
-  MorePlaceholder: { title: string; description: string };
 };
 
 export type MainTabParamList = {
@@ -42,7 +41,7 @@ export type AuthStackParamList = {
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   App: NavigatorScreenParams<MainTabParamList>;
-  TaskEdit: { taskId?: number } | undefined;
+  TaskEdit: { taskId?: number; presetTitle?: string } | undefined;
   Notifications: undefined;
 };
 

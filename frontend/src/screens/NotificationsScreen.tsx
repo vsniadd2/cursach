@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,7 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { deleteJson, getJson, patchJson } from '../api/requests';
 import type { NotificationItem, NotificationsResponse } from '../api/types';
@@ -18,9 +18,10 @@ import { useAuth } from '../auth/AuthContext';
 import { AppHeader } from '../components/AppHeader';
 import { useNotifications } from '../notifications/NotificationsContext';
 import type { RootStackParamList } from '../navigation/types';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
-import { notificationIcon, relativeTimeRu } from '../utils/locale';
+import { notificationIcon, relativeTime } from '../utils/locale';
 
 function createStyles(colors: AppPalette) {
   return StyleSheet.create({
@@ -76,8 +77,9 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
 export function NotificationsScreen({ navigation }: Props) {
   const colors = useAppColors();
+  const { language } = useAppPreferences();
   const styles = useMemo(() => createStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const auth = useAuth();
   const { refresh: refreshBadge, markAllRead } = useNotifications();
 
@@ -93,7 +95,7 @@ export function NotificationsScreen({ navigation }: Props) {
     await refreshBadge();
   }, [auth, refreshBadge]);
 
-  useEffect(() => {
+  const loadOnFocus = useCallback(() => {
     let alive = true;
     setLoading(true);
     load()
@@ -109,6 +111,8 @@ export function NotificationsScreen({ navigation }: Props) {
       alive = false;
     };
   }, [load]);
+
+  useAutoRefresh(['notifications'], loadOnFocus);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -162,11 +166,13 @@ export function NotificationsScreen({ navigation }: Props) {
       return;
     }
     if (item.entityType === 'Deal' && item.entityId) {
+      const dealId = Number(item.entityId);
+      if (!Number.isFinite(dealId) || dealId <= 0) return;
       navigation.navigate('App', {
         screen: 'Deals',
         params: {
           screen: 'DealEdit',
-          params: { dealId: Number(item.entityId) },
+          params: { dealId },
         },
       });
       return;
@@ -247,7 +253,7 @@ export function NotificationsScreen({ navigation }: Props) {
             <View style={styles.cardBody}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowText}>{item.body}</Text>
-              <Text style={styles.rowTime}>{relativeTimeRu(item.createdAtUtc)}</Text>
+              <Text style={styles.rowTime}>{relativeTime(item.createdAtUtc, language)}</Text>
             </View>
             {!item.isRead ? (
               <View

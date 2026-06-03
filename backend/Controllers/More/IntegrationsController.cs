@@ -11,7 +11,7 @@ namespace ExpogoCrm.Api.Controllers.More;
 [ApiController]
 [Route("integrations")]
 [Authorize]
-public class IntegrationsController(ExpogoDbContext db, IAuditTrailService audit) : ControllerBase
+public class IntegrationsController(ExpogoDbContext db, IAuditTrailService audit, IBillingEntitlementsService billing) : ControllerBase
 {
     [HttpGet("webhooks")]
     [Authorize(Policy = CrmPermissions.IntegrationsRead)]
@@ -40,6 +40,11 @@ public class IntegrationsController(ExpogoDbContext db, IAuditTrailService audit
         if (string.IsNullOrWhiteSpace(req.Name) || string.IsNullOrWhiteSpace(req.Url))
             return BadRequest(new { message = "Заполните имя и URL вебхука." });
 
+        var featureCheck = await billing.EnsureFeatureAsync(tenantId, BillingFeature.Integrations, ct);
+        var featureError = this.ToBillingActionResult(featureCheck);
+        if (featureError is not null)
+            return featureError;
+
         var hook = new WebhookEndpoint
         {
             TenantId = tenantId,
@@ -66,6 +71,11 @@ public class IntegrationsController(ExpogoDbContext db, IAuditTrailService audit
     public async Task<ActionResult<object>> EnqueueJob([FromBody] EnqueueJobRequest req, CancellationToken ct)
     {
         var tenantId = this.RequireTenantId();
+        var featureCheck = await billing.EnsureFeatureAsync(tenantId, BillingFeature.Integrations, ct);
+        var featureError = this.ToBillingActionResult(featureCheck);
+        if (featureError is not null)
+            return featureError;
+
         var job = new IntegrationJob
         {
             TenantId = tenantId,

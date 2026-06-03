@@ -153,6 +153,7 @@ public class AuthController : ControllerBase
 
         if (stored is null) return Unauthorized(new { message = "Токен обновления не найден" });
         if (stored.RevokedAtUtc is not null) return Unauthorized(new { message = "Токен обновления отозван" });
+        if (stored.ReplacedAtUtc is not null) return Unauthorized(new { message = "Токен обновления уже использован" });
         if (stored.ExpiresAtUtc <= DateTime.UtcNow) return Unauthorized(new { message = "Токен обновления истёк" });
 
         var user = stored.User;
@@ -183,5 +184,20 @@ public class AuthController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         return new LoginResponse(newAccess, newRefresh, membership.TenantId);
+    }
+
+    /// <summary>Отзыв refresh-токена при выходе (access JWT на клиенте просто удаляется).</summary>
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] RefreshRequest req, CancellationToken ct)
+    {
+        var hash = JwtTokenService.HashRefreshToken(req.RefreshToken);
+        var stored = await _db.RefreshTokens.SingleOrDefaultAsync(x => x.TokenHash == hash, ct);
+        if (stored is not null && stored.RevokedAtUtc is null)
+        {
+            stored.RevokedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+        }
+
+        return NoContent();
     }
 }

@@ -1,16 +1,18 @@
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
 import { useAuth } from '../auth/AuthContext';
 import { deleteJson, getJson, postJson, putJson } from '../api/requests';
 import { AppHeader } from '../components/AppHeader';
+import { AppTextInput } from '../components/AppTextInput';
 import { DatePickerField } from '../components/DatePickerField';
-import type { TasksResponse } from '../api/types';
 import type { RootStackParamList } from '../navigation/types';
-import { useAppColors } from '../theme/AppPreferencesContext';
+import { useAutoRefresh } from '../data/useAutoRefresh';
+import { useDataSync } from '../data/DataSyncContext';
+import { useAppColors, useAppPreferences } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
 import { taskPriorityLabel } from '../utils/locale';
 
@@ -18,6 +20,14 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, 'TaskEdit'>;
   route: RouteProp<RootStackParamList, 'TaskEdit'>;
 };
+
+type TeamMember = {
+  userId: number;
+  username: string;
+  fullName: string | null;
+};
+
+type TeamResponse = { items: TeamMember[] };
 
 type TaskDetail = {
   id: number;
@@ -30,65 +40,84 @@ type TaskDetail = {
   done: boolean;
 };
 
-const MINUTES_PER_DAY = 24 * 60 - 1; // 1439
+function memberDisplayName(m: TeamMember): string {
+  return m.fullName?.trim() || m.username;
+}
 
-/** "HH:MM" / "HH:MM:SS" → строка минут от полуночи для поля ввода */
-function apiTimeToMinutesField(isoTime: string): string {
-  const s = String(isoTime).trim();
-  const m = /^(\d{1,2}):(\d{2})/.exec(s);
+/** "HH:MM" / "HH:MM:SS" из API → "09:00" для поля */
+function apiTimeToHhMm(isoTime: string): string {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(isoTime).trim());
   if (!m) return '';
   const h = parseInt(m[1], 10);
   const min = parseInt(m[2], 10);
   if (Number.isNaN(h) || Number.isNaN(min) || h > 23 || min > 59) return '';
-  return String(h * 60 + min);
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
 }
 
-/** Минуты от полуночи → "HH:MM:00" для API */
-function minutesFieldToPayload(minutesStr: string): string | null {
-  const raw = minutesStr.trim();
+/** Ввод "9:00" / "09:00" → "09:00:00" для API */
+function hhMmToPayload(input: string): string | null {
+  const raw = input.trim();
   if (!raw) return null;
-  const n = parseInt(raw, 10);
-  if (Number.isNaN(n)) return null;
-  const clamped = Math.min(MINUTES_PER_DAY, Math.max(0, n));
-  const h = Math.floor(clamped / 60);
-  const min = clamped % 60;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(raw);
+  if (!m) return null;
+  const h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  if (Number.isNaN(h) || Number.isNaN(min) || h > 23 || min > 59) return null;
   return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
 }
 
-function minutesPreview(minutesStr: string): string | null {
-  const raw = minutesStr.trim();
-  if (!raw) return null;
-  const n = parseInt(raw, 10);
-  if (Number.isNaN(n)) return null;
-  const clamped = Math.min(MINUTES_PER_DAY, Math.max(0, n));
-  const h = Math.floor(clamped / 60);
-  const min = clamped % 60;
-  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+/** Маска ввода: только цифры, автоматически ЧЧ:ММ */
+function formatHhMmInput(text: string): string {
+  const digits = text.replace(/\D/g, '').slice(0, 4);
+  if (digits.length <= 2) return digits;
+  return `${digits.slice(0, 2)}:${digits.slice(2)}`;
 }
 
 export function TaskEditScreen({ navigation, route }: Props) {
   const colors = useAppColors();
+  const { language } = useAppPreferences();
   const styles = useMemo(() => createTaskEditStyles(colors), [colors]);
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const bottomPad = 120 + insets.bottom;
   const auth = useAuth();
+  const { invalidate } = useDataSync();
 
   const taskId = route.params?.taskId;
+  const presetTitle = route.params?.presetTitle;
   const isEdit = typeof taskId === 'number';
 
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(() => presetTitle?.trim() ?? '');
   const [description, setDescription] = useState('');
   const [assigneeName, setAssigneeName] = useState('');
-  const [timeMinutes, setTimeMinutes] = useState('');
+  const [timeHhMm, setTimeHhMm] = useState('');
   const [priority, setPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [team, setTeam] = useState<TeamMember[]>([]);
 
-  useEffect(() => {
+  const loadTeam = useCallback(() => {
     let alive = true;
-    if (!isEdit) return;
+    getJson<TeamResponse>(auth, '/team')
+      .then((d) => {
+        if (!alive) return;
+        setTeam(d.items ?? []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setTeam([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [auth]);
+
+  useAutoRefresh([], loadTeam);
+
+  const loadTask = useCallback(() => {
+    if (!isEdit || typeof taskId !== 'number') return;
+    let alive = true;
     setLoading(true);
     setError(null);
     getJson<TaskDetail>(auth, `/tasks/${taskId}`)
@@ -98,7 +127,7 @@ export function TaskEditScreen({ navigation, route }: Props) {
         setTitle((t as any).title ?? '');
         setDescription((t as any).description ?? '');
         setAssigneeName((t as any).assigneeName ?? '');
-        setTimeMinutes((t as any).time ? apiTimeToMinutesField(String((t as any).time)) : '');
+        setTimeHhMm((t as any).time ? apiTimeToHhMm(String((t as any).time)) : '');
         setPriority((t as any).priority ?? 'Medium');
         setDone(!!(t as any).done);
       })
@@ -115,16 +144,16 @@ export function TaskEditScreen({ navigation, route }: Props) {
     };
   }, [auth, isEdit, taskId]);
 
-  const timePreview = useMemo(() => minutesPreview(timeMinutes), [timeMinutes]);
+  useAutoRefresh(['tasks'], loadTask);
 
   const onSave = async () => {
     if (loading) return;
     setError(null);
     let timePayload: string | null = null;
-    if (timeMinutes.trim()) {
-      timePayload = minutesFieldToPayload(timeMinutes);
+    if (timeHhMm.trim()) {
+      timePayload = hhMmToPayload(timeHhMm);
       if (timePayload === null) {
-        setError('Время: введите целое число минут от 0 до 1439');
+        setError('Время: укажите в формате ЧЧ:ММ, например 09:00 или 14:30');
         return;
       }
     }
@@ -148,6 +177,7 @@ export function TaskEditScreen({ navigation, route }: Props) {
       } else {
         await postJson<{ id: number }>(auth, '/tasks', payload);
       }
+      invalidate('tasks', 'dashboard', 'notifications', 'audit');
       navigation.goBack();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка сохранения');
@@ -167,6 +197,7 @@ export function TaskEditScreen({ navigation, route }: Props) {
           setLoading(true);
           try {
             await deleteJson(auth, `/tasks/${taskId}`);
+            invalidate('tasks', 'dashboard', 'notifications', 'audit');
             navigation.goBack();
           } catch (e) {
             setError(e instanceof Error ? e.message : 'Ошибка удаления');
@@ -189,30 +220,44 @@ export function TaskEditScreen({ navigation, route }: Props) {
         <DatePickerField value={date} onChange={setDate} placeholder="Выберите дату" allowClear={false} />
 
         <Text style={styles.label}>Название</Text>
-        <TextInput value={title} onChangeText={setTitle} style={styles.input} />
+        <AppTextInput value={title} onChangeText={setTitle} style={styles.input} />
 
         <Text style={styles.label}>Описание</Text>
-        <TextInput value={description} onChangeText={setDescription} style={[styles.input, { minHeight: 90 }]} multiline />
+        <AppTextInput value={description} onChangeText={setDescription} style={[styles.input, { minHeight: 90 }]} multiline />
 
         <Text style={styles.label}>Исполнитель</Text>
-        <TextInput value={assigneeName} onChangeText={setAssigneeName} style={styles.input} />
+        <View style={styles.assigneeRow}>
+          <Pressable
+            onPress={() => setAssigneeName('')}
+            style={[styles.assigneeChip, !assigneeName.trim() && styles.assigneeChipActive]}
+          >
+            <Text style={[styles.assigneeChipText, !assigneeName.trim() && styles.assigneeChipTextActive]}>—</Text>
+          </Pressable>
+          {team.map((m) => {
+            const name = memberDisplayName(m);
+            const active = assigneeName === name;
+            return (
+              <Pressable
+                key={m.userId}
+                onPress={() => setAssigneeName(name)}
+                style={[styles.assigneeChip, active && styles.assigneeChipActive]}
+              >
+                <Text style={[styles.assigneeChipText, active && styles.assigneeChipTextActive]}>{name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-        <Text style={styles.label}>Время (минуты от полуночи)</Text>
-        <Text style={styles.hint}>Одно число: 0 = 00:00, 90 = 01:30, 1439 = 23:59</Text>
-        <TextInput
-          value={timeMinutes}
-          onChangeText={(t) => setTimeMinutes(t.replace(/\D/g, '').slice(0, 4))}
+        <Text style={styles.label}>Время</Text>
+        <AppTextInput
+          value={timeHhMm}
+          onChangeText={(t) => setTimeHhMm(formatHhMmInput(t))}
           autoCapitalize="none"
-          keyboardType="number-pad"
-          placeholder="например 540"
+          keyboardType="numbers-and-punctuation"
+          placeholder="09:00"
           placeholderTextColor={`${colors.onSurfaceVariant}99`}
           style={styles.input}
         />
-        {timePreview ? (
-          <Text style={styles.preview}>
-            На часах: <Text style={styles.previewBold}>{timePreview}</Text>
-          </Text>
-        ) : null}
 
         <Text style={styles.label}>Приоритет</Text>
         <View style={styles.row}>
@@ -220,7 +265,7 @@ export function TaskEditScreen({ navigation, route }: Props) {
             const active = priority === p;
             return (
               <Pressable key={p} onPress={() => setPriority(p)} style={[styles.pill, active && styles.pillActive]}>
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>{taskPriorityLabel(p)}</Text>
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>{taskPriorityLabel(p, language)}</Text>
               </Pressable>
             );
           })}
@@ -259,21 +304,6 @@ function createTaskEditStyles(colors: AppPalette) {
     textTransform: 'uppercase',
     letterSpacing: 1.6,
   },
-  hint: {
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-    marginBottom: 8,
-    lineHeight: 16,
-  },
-  preview: {
-    fontSize: 12,
-    color: colors.onSurfaceVariant,
-    marginTop: 6,
-  },
-  previewBold: {
-    fontWeight: '800',
-    color: colors.onSurface,
-  },
   input: {
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: 14,
@@ -284,7 +314,19 @@ function createTaskEditStyles(colors: AppPalette) {
     borderWidth: 1,
     borderColor: `${colors.outlineVariant}33`,
   },
-  row: { flexDirection: 'row', gap: 10 },
+  row: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  assigneeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  assigneeChip: {
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: colors.surfaceContainerLow,
+    borderWidth: 1,
+    borderColor: `${colors.outlineVariant}22`,
+  },
+  assigneeChipActive: { backgroundColor: colors.primaryContainer, borderColor: `${colors.primary}33` },
+  assigneeChipText: { fontSize: 12, fontWeight: '800', color: colors.onSurfaceVariant },
+  assigneeChipTextActive: { color: colors.onPrimaryContainer },
   pill: {
     flex: 1,
     borderRadius: 999,
