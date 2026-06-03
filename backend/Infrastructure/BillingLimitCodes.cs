@@ -6,7 +6,7 @@ public static class BillingLimitCodes
     public const string Pipelines = "billing.limit.pipelines";
     public const string Seats = "billing.limit.seats";
     public const string Integrations = "billing.limit.integrations";
-    public const string Automations = "billing.limit.automations";
+    public const string AiAdvisor = "billing.limit.ai";
     public const string TeamRoles = "billing.limit.teamRoles";
     public const string Reports = "billing.limit.reports";
     public const string TeamMinSeats = "billing.limit.teamMinSeats";

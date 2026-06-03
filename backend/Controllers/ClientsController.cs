@@ -2,6 +2,7 @@ using ExpogoCrm.Api.Data;
 using ExpogoCrm.Api.Infrastructure;
 using ExpogoCrm.Api.Security;
 using ExpogoCrm.Api.Services;
+using ExpogoCrm.Api.Services.Integrations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,15 +18,18 @@ public class ClientsController : ControllerBase
     private readonly ExpogoDbContext _db;
     private readonly IAuditTrailService _audit;
     private readonly IBillingEntitlementsService _billing;
+    private readonly IIntegrationDispatchService _integrations;
 
     public ClientsController(
         ExpogoDbContext db,
         IAuditTrailService audit,
-        IBillingEntitlementsService billing)
+        IBillingEntitlementsService billing,
+        IIntegrationDispatchService integrations)
     {
         _db = db;
         _audit = audit;
         _billing = billing;
+        _integrations = integrations;
     }
 
     public record ClientsListResponse(
@@ -224,6 +228,7 @@ public class ClientsController : ControllerBase
         client.AvatarHue = ClientAvatarColor.AssignHue(client.Id, client.FullName, client.Company);
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "clients.create", nameof(Client), client.Id.ToString(), null, client, ct);
+        _integrations.NotifyNewClient(tenantId, client);
 
         return CreatedAtAction(nameof(Get), new { id = client.Id }, new { id = client.Id, avatarHue = client.AvatarHue });
     }

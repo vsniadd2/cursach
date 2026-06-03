@@ -4,6 +4,14 @@ import { enableScreens } from 'react-native-screens';
 
 if (Platform.OS === 'web') {
   enableScreens(false);
+
+  const styleId = 'expogo-web-input-reset';
+  if (typeof document !== 'undefined' && !document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = 'input:focus, textarea:focus { outline: none !important; }';
+    document.head.appendChild(style);
+  }
 }
 
 import App from './App';

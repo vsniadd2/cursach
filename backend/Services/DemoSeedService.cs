@@ -27,6 +27,7 @@ public class DemoSeedService(ExpogoDbContext db, IConfiguration configuration) :
 {
     public async Task<DemoSeedResult> SeedAsync(int tenantId, bool forceCrm, CancellationToken ct = default)
     {
+        await EnsureDemoProPlanAsync(tenantId, ct);
         var usersUpserted = await EnsureTeamUsersAsync(tenantId, ct);
         await EnsureAuditSampleAsync(tenantId, ct);
 
@@ -126,6 +127,35 @@ public class DemoSeedService(ExpogoDbContext db, IConfiguration configuration) :
         }
 
         return count;
+    }
+
+    /// <summary>ИИ-советник и интеграции доступны на PRO/TEAM — для демо поднимаем тариф.</summary>
+    private async Task EnsureDemoProPlanAsync(int tenantId, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var sub = await db.BillingSubscriptions.SingleOrDefaultAsync(x => x.TenantId == tenantId, ct);
+        if (sub is null)
+        {
+            db.BillingSubscriptions.Add(new BillingSubscription
+            {
+                TenantId = tenantId,
+                PlanCode = "pro",
+                Status = "active",
+                SeatsLimit = 10,
+                StorageGbLimit = 50,
+                CurrentPeriodStartUtc = now,
+                CurrentPeriodEndUtc = now.AddMonths(1),
+            });
+        }
+        else
+        {
+            sub.PlanCode = "pro";
+            sub.Status = "active";
+        }
+
+        var tenant = await db.Tenants.SingleAsync(x => x.Id == tenantId, ct);
+        tenant.PlanCode = "pro";
+        await db.SaveChangesAsync(ct);
     }
 
     private async Task ClearTenantCrmAsync(int tenantId, CancellationToken ct)
@@ -462,10 +492,10 @@ public class DemoSeedService(ExpogoDbContext db, IConfiguration configuration) :
             {
                 TenantId = tenantId,
                 UserId = userId,
-                Action = "automations.create",
-                EntityType = "AutomationRule",
+                Action = "ai.advisor.query",
+                EntityType = "AiAdvisor",
                 EntityId = "1",
-                AfterJson = J(new { name = "Напоминание о просроченных задачах", trigger = "task.overdue" }),
+                AfterJson = J(new { prompt = "Анализ воронки и рекомендации" }),
                 CreatedAtUtc = now.AddMinutes(-30),
             },
             new()

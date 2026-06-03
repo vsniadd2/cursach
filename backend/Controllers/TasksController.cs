@@ -2,6 +2,7 @@ using ExpogoCrm.Api.Data;
 using ExpogoCrm.Api.Infrastructure;
 using ExpogoCrm.Api.Security;
 using ExpogoCrm.Api.Services;
+using ExpogoCrm.Api.Services.Integrations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,18 +19,20 @@ public class TasksController : ControllerBase
     private readonly IAuditTrailService _audit;
     private readonly INotificationService _notifications;
     private readonly ICurrentTenantAccessor _current;
+    private readonly IIntegrationDispatchService _integrations;
 
     public TasksController(
         ExpogoDbContext db,
         IAuditTrailService audit,
         INotificationService notifications,
-        ICurrentTenantAccessor current
-    )
+        ICurrentTenantAccessor current,
+        IIntegrationDispatchService integrations)
     {
         _db = db;
         _audit = audit;
         _notifications = notifications;
         _current = current;
+        _integrations = integrations;
     }
 
     public class TaskUpsertRequest
@@ -150,6 +153,7 @@ public class TasksController : ControllerBase
         _db.Tasks.Add(item);
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "tasks.create", nameof(TaskItem), item.Id.ToString(), null, item, ct);
+        _integrations.SyncTaskToCalendar(tenantId, item.Id);
         if (item.Priority == TaskPriority.High)
         {
             await _notifications.NotifyTenantExceptAsync(
@@ -192,6 +196,7 @@ public class TasksController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "tasks.update", nameof(TaskItem), item.Id.ToString(), before, item, ct);
+        _integrations.SyncTaskToCalendar(tenantId, item.Id);
         return NoContent();
     }
 
@@ -219,9 +224,11 @@ public class TasksController : ControllerBase
         var task = await _db.Tasks.SingleOrDefaultAsync(t => t.Id == id && t.TenantId == tenantId, ct);
         if (task is null) return NotFound(new { message = "Задача не найдена" });
         var before = new { task.Id, task.Title, task.Date };
+        var googleEventId = task.GoogleEventId;
         _db.Tasks.Remove(task);
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "tasks.delete", nameof(TaskItem), id.ToString(), before, null, ct);
+        _integrations.DeleteTaskFromCalendar(tenantId, id, googleEventId);
         return NoContent();
     }
 

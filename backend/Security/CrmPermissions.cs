@@ -19,13 +19,13 @@ public static class CrmPermissions
     public const string BillingRead = "crm.billing.read";
     public const string BillingWrite = "crm.billing.write";
     public const string AuditRead = "crm.audit.read";
-    public const string AutomationsWrite = "crm.automations.write";
+    public const string AiAdvisorRead = "crm.ai.advisor.read";
     public const string Admin = "crm.admin";
 
     public static readonly string[] All =
     [
         ClientsRead, ClientsWrite, DealsRead, DealsWrite, TasksRead, TasksWrite, DashboardRead,
         TeamRead, TeamWrite, ReportsRead, SupportRead, SupportWrite,
-        IntegrationsRead, IntegrationsWrite, BillingRead, BillingWrite, AuditRead, AutomationsWrite, Admin
+        IntegrationsRead, IntegrationsWrite, BillingRead, BillingWrite, AuditRead, AiAdvisorRead, Admin
     ];
 }

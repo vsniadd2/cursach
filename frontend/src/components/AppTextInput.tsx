@@ -1,5 +1,5 @@
 import { forwardRef, useCallback } from 'react';
-import { Platform, TextInput, type TextInputProps } from 'react-native';
+import { Platform, TextInput, type TextInputProps, type TextStyle } from 'react-native';
 
 import { dismissKeyboard } from '../utils/keyboard';
 
@@ -9,7 +9,7 @@ export type AppTextInputProps = TextInputProps & {
 };
 
 export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(function AppTextInput(
-  { returnKey, multiline, blurOnSubmit, onSubmitEditing, returnKeyType, enterKeyHint, ...rest },
+  { returnKey, multiline, blurOnSubmit, onSubmitEditing, returnKeyType, enterKeyHint, style, ...rest },
   ref,
 ) {
   const resolvedReturnKey = returnKey ?? (multiline ? undefined : 'done');
@@ -30,7 +30,24 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(function Ap
 
   const webEnterHint =
     enterKeyHint ??
-    (resolvedReturnKeyType === 'search' ? 'search' : multiline ? 'enter' : 'done');
+    (resolvedReturnKeyType === 'search'
+      ? 'search'
+      : resolvedReturnKeyType === 'send' || resolvedReturnKeyType === 'go'
+        ? resolvedReturnKeyType
+        : multiline
+          ? 'enter'
+          : 'done');
+
+  const webInputBaseStyle: TextStyle | undefined =
+    Platform.OS === 'web'
+      ? ({
+          outlineStyle: 'none',
+          outlineWidth: 0,
+          borderWidth: 0,
+          backgroundColor: 'transparent',
+          boxShadow: 'none',
+        } as unknown as TextStyle)
+      : undefined;
 
   return (
     <TextInput
@@ -40,6 +57,7 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(function Ap
       multiline={multiline}
       returnKeyType={resolvedReturnKeyType}
       onSubmitEditing={handleSubmitEditing}
+      style={webInputBaseStyle ? [webInputBaseStyle, style] : style}
       {...rest}
     />
   );

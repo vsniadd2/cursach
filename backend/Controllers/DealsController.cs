@@ -2,6 +2,7 @@ using ExpogoCrm.Api.Data;
 using ExpogoCrm.Api.Infrastructure;
 using ExpogoCrm.Api.Security;
 using ExpogoCrm.Api.Services;
+using ExpogoCrm.Api.Services.Integrations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,13 +20,15 @@ public class DealsController : ControllerBase
     private readonly INotificationService _notifications;
     private readonly ICurrentTenantAccessor _current;
     private readonly IBillingEntitlementsService _billing;
+    private readonly IIntegrationDispatchService _integrations;
 
     public DealsController(
         ExpogoDbContext db,
         IAuditTrailService audit,
         INotificationService notifications,
         ICurrentTenantAccessor current,
-        IBillingEntitlementsService billing
+        IBillingEntitlementsService billing,
+        IIntegrationDispatchService integrations
     )
     {
         _db = db;
@@ -33,6 +36,7 @@ public class DealsController : ControllerBase
         _notifications = notifications;
         _current = current;
         _billing = billing;
+        _integrations = integrations;
     }
 
     public record DealListItem(
@@ -268,6 +272,8 @@ public class DealsController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "deals.create", nameof(Deal), deal.Id.ToString(), null, deal, ct);
+        if (deal.Stage == DealStage.Closed)
+            await NotifyDealClosedAsync(tenantId, deal, ct);
 
         return CreatedAtAction(nameof(Get), new { id = deal.Id }, new { id = deal.Id });
     }
@@ -304,6 +310,8 @@ public class DealsController : ControllerBase
 
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "deals.update", nameof(Deal), deal.Id.ToString(), before, deal, ct);
+        if (deal.Stage == DealStage.Closed && prevStage != DealStage.Closed)
+            await NotifyDealClosedAsync(tenantId, deal, ct);
         return NoContent();
     }
 
@@ -359,6 +367,8 @@ public class DealsController : ControllerBase
             $"deal-stage:{deal.Id}:{req.Stage}",
             ct
         );
+        if (req.Stage == DealStage.Closed && before != DealStage.Closed)
+            await NotifyDealClosedAsync(tenantId, deal, ct);
         return NoContent();
     }
 
@@ -445,6 +455,14 @@ public class DealsController : ControllerBase
             .Select(x => x.UiLanguage)
             .SingleOrDefaultAsync(ct);
         return string.IsNullOrWhiteSpace(lang) ? "ru" : lang;
+    }
+
+    private async Task NotifyDealClosedAsync(int tenantId, Deal deal, CancellationToken ct)
+    {
+        var client = await _db.Clients.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == deal.ClientId && x.TenantId == tenantId, ct);
+        if (client is null) return;
+        _integrations.NotifyDealClosed(tenantId, deal, client);
     }
 }
 

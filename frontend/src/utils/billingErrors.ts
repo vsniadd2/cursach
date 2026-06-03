@@ -6,7 +6,7 @@ const CODE_TO_KEY: Record<string, MessageKey> = {
   'billing.limit.pipelines': 'billing.limits.pipelines',
   'billing.limit.seats': 'billing.limits.seats',
   'billing.limit.integrations': 'billing.limits.integrations',
-  'billing.limit.automations': 'billing.limits.automations',
+  'billing.limit.ai': 'billing.limits.ai',
   'billing.limit.teamRoles': 'billing.limits.teamRoles',
   'billing.limit.reports': 'billing.limits.reports',
   'billing.limit.teamMinSeats': 'billing.limits.teamMinSeats',

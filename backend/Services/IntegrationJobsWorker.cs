@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ExpogoCrm.Api.Data;
+using ExpogoCrm.Api.Services.Integrations;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpogoCrm.Api.Services;
@@ -8,7 +9,9 @@ namespace ExpogoCrm.Api.Services;
 public sealed class IntegrationJobsWorker(
     IServiceScopeFactory scopeFactory,
     IHttpClientFactory httpFactory,
-    ILogger<IntegrationJobsWorker> logger)
+    ILogger<IntegrationJobsWorker> logger,
+    ITelegramIntegrationClient telegram,
+    ISmtpEmailIntegrationClient smtp)
     : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -42,6 +45,10 @@ public sealed class IntegrationJobsWorker(
                     {
                         if (string.Equals(job.JobType, "webhook", StringComparison.OrdinalIgnoreCase))
                             await DeliverWebhookAsync(http, job, stoppingToken);
+                        else if (string.Equals(job.JobType, "telegram", StringComparison.OrdinalIgnoreCase))
+                            await DeliverTelegramAsync(job, stoppingToken);
+                        else if (string.Equals(job.JobType, "email", StringComparison.OrdinalIgnoreCase))
+                            await DeliverEmailAsync(job, stoppingToken);
                         else
                             await Task.Delay(20, stoppingToken);
 
@@ -121,5 +128,36 @@ public sealed class IntegrationJobsWorker(
 
         using var resp = await http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
         resp.EnsureSuccessStatusCode();
+    }
+
+    private async Task DeliverTelegramAsync(IntegrationJob job, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(job.PayloadJson))
+            throw new InvalidOperationException("PayloadJson обязателен для telegram.");
+
+        using var doc = JsonDocument.Parse(job.PayloadJson);
+        var root = doc.RootElement;
+        var token = root.GetProperty("botToken").GetString() ?? "";
+        var chatId = root.GetProperty("chatId").GetString() ?? "";
+        var text = root.GetProperty("text").GetString() ?? "";
+        await telegram.SendAsync(token, chatId, text, ct);
+    }
+
+    private async Task DeliverEmailAsync(IntegrationJob job, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(job.PayloadJson))
+            throw new InvalidOperationException("PayloadJson обязателен для email.");
+
+        using var doc = JsonDocument.Parse(job.PayloadJson);
+        var root = doc.RootElement;
+        var config = root.GetProperty("config").Deserialize<EmailIntegrationConfig>(IntegrationJson.Options)
+            ?? throw new InvalidOperationException("Invalid email config.");
+        var password = root.GetProperty("password").GetString() ?? "";
+        var subject = root.GetProperty("subject").GetString() ?? "Expogo CRM";
+        var body = root.GetProperty("body").GetString() ?? "";
+        var to = config.FromEmail;
+        if (string.IsNullOrWhiteSpace(to))
+            throw new InvalidOperationException("FromEmail пустой.");
+        await smtp.SendAsync(config, password, to, subject, body, ct);
     }
 }

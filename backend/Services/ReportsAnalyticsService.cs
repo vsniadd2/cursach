@@ -1,4 +1,5 @@
 using ExpogoCrm.Api.Data;
+using ExpogoCrm.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace ExpogoCrm.Api.Services;
@@ -59,9 +60,9 @@ public sealed class ReportsAnalyticsService(ExpogoDbContext db, IBillingEntitlem
 
         var stageSlices = new List<ReportStageSlice>
         {
-            new("Lead", "Лиды", lead),
-            new("Negotiation", "Переговоры", negotiation),
-            new("Closed", "Закрыты", closed),
+            new("Lead", PdfBilingualLabels.Report.StageLead, lead),
+            new("Negotiation", PdfBilingualLabels.Report.StageNegotiation, negotiation),
+            new("Closed", PdfBilingualLabels.Report.StageClosed, closed),
         };
 
         var months = new List<ReportMonthRevenue>();

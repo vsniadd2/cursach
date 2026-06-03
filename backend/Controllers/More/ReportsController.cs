@@ -51,7 +51,7 @@ public class ReportsController(
         });
     }
 
-    [HttpGet("export.pdf")]
+    [HttpGet("export")]
     [Authorize(Policy = CrmPermissions.ReportsRead)]
     public async Task<IActionResult> ExportPdf(CancellationToken ct)
     {

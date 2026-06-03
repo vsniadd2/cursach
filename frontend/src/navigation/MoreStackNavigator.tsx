@@ -1,8 +1,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { AutomationsScreen } from '../screens/AutomationsScreen';
+import { AiAdvisorScreen } from '../screens/AiAdvisorScreen';
 import { AuditLogScreen } from '../screens/AuditLogScreen';
 import { BillingScreen } from '../screens/BillingScreen';
+import { IntegrationProviderSettingsScreen } from '../screens/IntegrationProviderSettingsScreen';
 import { IntegrationsScreen } from '../screens/IntegrationsScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
@@ -22,7 +23,12 @@ export function MoreStackNavigator() {
       <Stack.Screen component={ReportsScreen} name="MoreReports" options={{ title: 'Отчёты' }} />
       <Stack.Screen component={BillingScreen} name="MoreBilling" options={{ title: 'Тариф' }} />
       <Stack.Screen component={IntegrationsScreen} name="MoreIntegrations" options={{ title: 'Интеграции' }} />
-      <Stack.Screen component={AutomationsScreen} name="MoreAutomations" options={{ title: 'Автоматизации' }} />
+      <Stack.Screen
+        component={IntegrationProviderSettingsScreen}
+        name="MoreIntegrationSettings"
+        options={{ title: 'Настройки интеграции' }}
+      />
+      <Stack.Screen component={AiAdvisorScreen} name="MoreAiAdvisor" options={{ title: 'ИИ-советник' }} />
       <Stack.Screen component={AuditLogScreen} name="MoreAuditLog" options={{ title: 'Аудит' }} />
       <Stack.Screen component={SupportScreen} name="MoreSupport" options={{ title: 'Поддержка' }} />
     </Stack.Navigator>

@@ -28,6 +28,9 @@ public class ExpogoDbContext : DbContext
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<SupportFaqItem> SupportFaqItems => Set<SupportFaqItem>();
     public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
+    public DbSet<AiAdvisorSession> AiAdvisorSessions => Set<AiAdvisorSession>();
+    public DbSet<AiAdvisorMessage> AiAdvisorMessages => Set<AiAdvisorMessage>();
+    public DbSet<TenantIntegration> TenantIntegrations => Set<TenantIntegration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -199,5 +202,39 @@ public class ExpogoDbContext : DbContext
 
         modelBuilder.Entity<UserNotification>()
             .HasIndex(x => new { x.TenantId, x.UserId, x.DedupeKey });
+
+        modelBuilder.Entity<AiAdvisorSession>()
+            .HasOne(x => x.Tenant)
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AiAdvisorSession>()
+            .HasOne(x => x.User)
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AiAdvisorSession>()
+            .HasIndex(x => new { x.TenantId, x.UserId, x.UpdatedAtUtc });
+
+        modelBuilder.Entity<AiAdvisorMessage>()
+            .HasOne(x => x.Session)
+            .WithMany(x => x.Messages)
+            .HasForeignKey(x => x.SessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AiAdvisorMessage>()
+            .HasIndex(x => new { x.SessionId, x.CreatedAtUtc });
+
+        modelBuilder.Entity<TenantIntegration>()
+            .HasOne(x => x.Tenant)
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TenantIntegration>()
+            .HasIndex(x => new { x.TenantId, x.Provider })
+            .IsUnique();
     }
 }

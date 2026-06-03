@@ -3,6 +3,7 @@ using System;
 using ExpogoCrm.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExpogoCrm.Api.Migrations
 {
     [DbContext(typeof(ExpogoDbContext))]
-    partial class ExpogoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603184655_AddTenantIntegrations")]
+    partial class AddTenantIntegrations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

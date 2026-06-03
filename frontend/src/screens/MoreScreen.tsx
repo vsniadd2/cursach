@@ -18,7 +18,7 @@ type MoreRowId =
   | 'team'
   | 'billing'
   | 'integrations'
-  | 'automations'
+  | 'aiAdvisor'
   | 'audit'
   | 'reports'
   | 'support';
@@ -32,7 +32,7 @@ const ROWS: Array<{
   { id: 'team', icon: 'people', adminOnly: true },
   { id: 'billing', icon: 'credit-card', adminOnly: true },
   { id: 'integrations', icon: 'device-hub', adminOnly: true },
-  { id: 'automations', icon: 'flash-on', adminOnly: true },
+  { id: 'aiAdvisor', icon: 'psychology', adminOnly: true },
   { id: 'audit', icon: 'history', adminOnly: true },
   { id: 'reports', icon: 'description', adminOnly: true },
   { id: 'support', icon: 'help-outline', adminOnly: false },
@@ -138,8 +138,8 @@ export function MoreScreen({ navigation }: Props) {
       case 'integrations':
         navigation.navigate('MoreIntegrations');
         return;
-      case 'automations':
-        navigation.navigate('MoreAutomations');
+      case 'aiAdvisor':
+        navigation.navigate('MoreAiAdvisor');
         return;
       case 'audit':
         navigation.navigate('MoreAuditLog');

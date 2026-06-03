@@ -1,10 +1,13 @@
 Запуск (из корня cursach)
 
-1. Backend + БД
+1. Backend + БД + демо-данные
    docker compose up -d --build
    API: http://localhost:5278
+   После старта API контейнер seed выполняет npm run seed:demo (клиенты, сделки, задачи).
+   Логи сида: docker compose logs seed
    После изменений только бэкенда (чек PDF, API, миграции):
      docker compose build api && docker compose up -d api
+   Пересоздать только демо-CRM: docker compose run --rm seed node seed-demo.js --force-crm
 
 2. Frontend
    cd frontend
@@ -19,7 +22,21 @@
 
 Сброс БД: docker compose down -v && docker compose up -d --build
 
-Демо-данные (6 пользователей, клиенты, сделки, задачи):
+Демо-данные без Docker (локальный API на :5278):
   cd frontend && npm run seed:demo
-  Пересоздать CRM при уже заполненной БД: npm run seed:force
+  Пересоздать CRM: npm run seed:force
   Логины: admin, maria, dmitry, elena, alexey, natalia — пароль 123456
+
+ИИ-советник (OpenRouter, «Ещё» → admin, тариф PRO/TEAM):
+  1. Ключ: https://openrouter.ai/keys
+  2. backend/appsettings.json → Ai:Llm:ApiKey (модель: Ai:Llm:Model, список на openrouter.ai/models)
+  3. Docker: $env:OPENROUTER_API_KEY = "ваш-ключ"; docker compose build api; docker compose up -d api
+
+Интеграции («Ещё» → Интеграции, admin, тариф PRO/TEAM):
+  Telegram: @BotFather → токен бота; chat id — напишите боту, откройте https://api.telegram.org/bot<TOKEN>/getUpdates
+  Email: SMTP (Gmail — пароль приложения, smtp.gmail.com:587, TLS)
+  Google Calendar:
+    1. Google Cloud Console → OAuth client (Web)
+    2. Redirect URI: http://localhost:5278/integrations/google-calendar/callback
+    3. backend/appsettings.json → Integrations:Google:ClientId, ClientSecret
+    4. В приложении: «Подключить Google» → после входа редирект на http://localhost:8081/?gcal=connected

@@ -1,4 +1,5 @@
 using System.Globalization;
+using ExpogoCrm.Api.Infrastructure;
 using QuestPDF.Drawing;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -47,12 +48,12 @@ public sealed class ReportsPdfService : IReportsPdfService
                     root.Item().Column(h =>
                     {
                         h.Item().Text("Expogo CRM").Bold().FontSize(20);
-                        h.Item().Text("Отчёт по продажам").FontSize(13).FontColor(Colors.Grey.Darken2);
-                        h.Item().Text($"{d.TenantName} · сформирован {generated} UTC").FontSize(9)
+                        h.Item().Text(PdfBilingualLabels.Report.Title).FontSize(13).FontColor(Colors.Grey.Darken2);
+                        h.Item().Text(PdfBilingualLabels.Report.GeneratedAt(d.TenantName, generated)).FontSize(9)
                             .FontColor(Colors.Grey.Darken2);
                     });
 
-                    root.Item().Text("Ключевые показатели").Bold().FontSize(12);
+                    root.Item().Text(PdfBilingualLabels.Report.KeyMetrics).Bold().FontSize(12);
                     root.Item().Table(table =>
                     {
                         table.ColumnsDefinition(c =>
@@ -60,22 +61,22 @@ public sealed class ReportsPdfService : IReportsPdfService
                             c.RelativeColumn();
                             c.RelativeColumn();
                         });
-                        KpiCell(table, "Выручка за месяц", $"${d.MonthRevenueUsd:N2}");
-                        KpiCell(table, "Конверсия в закрытие", $"{d.ConversionPct:N1}%");
-                        KpiCell(table, "Сделок всего", d.TotalDeals.ToString());
-                        KpiCell(table, "Закрытых сделок", d.ClosedDeals.ToString());
+                        KpiCell(table, PdfBilingualLabels.Report.MonthRevenue, $"${d.MonthRevenueUsd:N2}");
+                        KpiCell(table, PdfBilingualLabels.Report.CloseConversion, $"{d.ConversionPct:N1}%");
+                        KpiCell(table, PdfBilingualLabels.Report.TotalDeals, d.TotalDeals.ToString());
+                        KpiCell(table, PdfBilingualLabels.Report.ClosedDeals, d.ClosedDeals.ToString());
                         if (d.QuarterRevenueUsd is decimal q)
-                            KpiCell(table, "Выручка за квартал", $"${q:N2}");
-                        KpiCell(table, "Просроченные задачи", d.OverdueTasks.ToString());
+                            KpiCell(table, PdfBilingualLabels.Report.QuarterRevenue, $"${q:N2}");
+                        KpiCell(table, PdfBilingualLabels.Report.OverdueTasks, d.OverdueTasks.ToString());
                     });
 
-                    root.Item().PaddingTop(8).Text("Воронка сделок").Bold().FontSize(12);
+                    root.Item().PaddingTop(8).Text(PdfBilingualLabels.Report.DealPipeline).Bold().FontSize(12);
                     root.Item().Element(c => DrawStageBars(c, d));
 
-                    root.Item().PaddingTop(8).Text("Выручка по месяцам (закрытые сделки)").Bold().FontSize(12);
+                    root.Item().PaddingTop(8).Text(PdfBilingualLabels.Report.MonthlyRevenue).Bold().FontSize(12);
                     root.Item().Element(c => DrawMonthlyBars(c, d.MonthlyRevenue));
 
-                    root.Item().PaddingTop(8).Text("Конверсия воронки").Bold().FontSize(12);
+                    root.Item().PaddingTop(8).Text(PdfBilingualLabels.Report.FunnelConversion).Bold().FontSize(12);
                     root.Item().Element(c => DrawConversionBar(c, d));
                 });
 
@@ -118,7 +119,7 @@ public sealed class ReportsPdfService : IReportsPdfService
 
                 col.Item().Row(row =>
                 {
-                    row.ConstantItem(90).Text(slice.Label).FontSize(9);
+                    row.ConstantItem(120).Text(slice.Label).FontSize(9);
                     row.RelativeItem().Height(18).Row(bar =>
                     {
                         bar.RelativeItem(Math.Max(1, slice.Count)).Background(color);
@@ -175,8 +176,8 @@ public sealed class ReportsPdfService : IReportsPdfService
             });
             col.Item().Row(legend =>
             {
-                legend.RelativeItem().Text($"Закрыто: {d.ClosedDeals} ({d.ConversionPct}%)").FontSize(9);
-                legend.RelativeItem().AlignRight().Text($"В работе: {open}").FontSize(9);
+                legend.RelativeItem().Text(PdfBilingualLabels.Report.ClosedLegend(d.ClosedDeals, d.ConversionPct)).FontSize(9);
+                legend.RelativeItem().AlignRight().Text(PdfBilingualLabels.Report.InProgressLegend(open)).FontSize(9);
             });
         });
     }

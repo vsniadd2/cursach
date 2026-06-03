@@ -3,6 +3,7 @@ using System;
 using ExpogoCrm.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ExpogoCrm.Api.Migrations
 {
     [DbContext(typeof(ExpogoDbContext))]
-    partial class ExpogoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260603184147_AddAiAdvisorChatSessions")]
+    partial class AddAiAdvisorChatSessions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -689,10 +692,6 @@ namespace ExpogoCrm.Api.Migrations
                     b.Property<bool>("Done")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("GoogleEventId")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -746,42 +745,6 @@ namespace ExpogoCrm.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Tenants");
-                });
-
-            modelBuilder.Entity("ExpogoCrm.Api.Data.TenantIntegration", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ConfigJson")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<string>("SecretsJson")
-                        .HasColumnType("text");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TenantId", "Provider")
-                        .IsUnique();
-
-                    b.ToTable("TenantIntegrations");
                 });
 
             modelBuilder.Entity("ExpogoCrm.Api.Data.TenantMembership", b =>
@@ -1137,17 +1100,6 @@ namespace ExpogoCrm.Api.Migrations
                 });
 
             modelBuilder.Entity("ExpogoCrm.Api.Data.TaskItem", b =>
-                {
-                    b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Tenant");
-                });
-
-            modelBuilder.Entity("ExpogoCrm.Api.Data.TenantIntegration", b =>
                 {
                     b.HasOne("ExpogoCrm.Api.Data.Tenant", "Tenant")
                         .WithMany()

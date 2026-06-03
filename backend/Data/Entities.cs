@@ -227,6 +227,9 @@ public class TaskItem
 
     public bool Done { get; set; }
 
+    [MaxLength(256)]
+    public string? GoogleEventId { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
@@ -460,5 +463,60 @@ public class UserNotification
     public bool IsRead { get; set; }
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public class AiAdvisorSession
+{
+    public Guid Id { get; set; }
+    public int TenantId { get; set; }
+    public Tenant Tenant { get; set; } = null!;
+    public int UserId { get; set; }
+    public AppUser User { get; set; } = null!;
+
+    [MaxLength(120)]
+    public string Title { get; set; } = "Новый чат";
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public ICollection<AiAdvisorMessage> Messages { get; set; } = [];
+}
+
+public class AiAdvisorMessage
+{
+    public long Id { get; set; }
+    public Guid SessionId { get; set; }
+    public AiAdvisorSession Session { get; set; } = null!;
+
+    [MaxLength(16)]
+    public required string Role { get; set; }
+
+    public required string Content { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public static class IntegrationProviders
+{
+    public const string Telegram = "telegram";
+    public const string Email = "email";
+    public const string GoogleCalendar = "google_calendar";
+
+    public static readonly string[] All = [Telegram, Email, GoogleCalendar];
+}
+
+public class TenantIntegration
+{
+    public int Id { get; set; }
+    public int TenantId { get; set; }
+    public Tenant Tenant { get; set; } = null!;
+
+    [MaxLength(32)]
+    public required string Provider { get; set; }
+
+    public bool IsEnabled { get; set; }
+    public string? ConfigJson { get; set; }
+    public string? SecretsJson { get; set; }
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

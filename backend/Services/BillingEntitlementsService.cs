@@ -9,7 +9,7 @@ public enum BillingFeature
     Integrations,
     OpenApi,
     AutoTasks,
-    Automations,
+    AiAdvisor,
     AdvancedAnalytics,
     RoleManagement,
     Reports,
@@ -97,7 +97,7 @@ public sealed class BillingEntitlementsService(ExpogoDbContext db) : IBillingEnt
         {
             BillingFeature.Integrations or BillingFeature.OpenApi => plan.Integrations,
             BillingFeature.AutoTasks => plan.AutoTasks,
-            BillingFeature.Automations => plan.AutoTasks,
+            BillingFeature.AiAdvisor => plan.AutoTasks,
             BillingFeature.AdvancedAnalytics => plan.AdvancedAnalytics,
             BillingFeature.RoleManagement => plan.RoleManagement,
             BillingFeature.Reports => plan.Code != "free",
@@ -110,7 +110,7 @@ public sealed class BillingEntitlementsService(ExpogoDbContext db) : IBillingEnt
         var code = feature switch
         {
             BillingFeature.Integrations or BillingFeature.OpenApi => BillingLimitCodes.Integrations,
-            BillingFeature.Automations => BillingLimitCodes.Automations,
+            BillingFeature.AiAdvisor => BillingLimitCodes.AiAdvisor,
             BillingFeature.RoleManagement => BillingLimitCodes.TeamRoles,
             BillingFeature.Reports => BillingLimitCodes.Reports,
             _ => BillingLimitCodes.Integrations,

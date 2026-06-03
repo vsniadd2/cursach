@@ -21,7 +21,8 @@ export type MoreStackParamList = {
   MoreSupport: undefined;
   MoreBilling: undefined;
   MoreIntegrations: undefined;
-  MoreAutomations: undefined;
+  MoreIntegrationSettings: { provider: 'telegram' | 'email' | 'google_calendar' };
+  MoreAiAdvisor: undefined;
   MoreAuditLog: undefined;
 };
 

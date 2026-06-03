@@ -103,7 +103,7 @@ export function ReportsScreen({ navigation }: Props) {
     try {
       const { blob, fileName } = await downloadBlob(
         auth,
-        '/reports/export.pdf',
+        '/reports/export',
         'expogo-report.pdf',
       );
       saveBlobAsFile(blob, fileName);
@@ -142,27 +142,27 @@ export function ReportsScreen({ navigation }: Props) {
         {data ? (
           <View style={styles.grid}>
             <View style={styles.card}>
-              <Text style={styles.label}>{t('dashboard.perMonth')}</Text>
+              <Text style={styles.label}>{t('reportsScreen.monthRevenue')}</Text>
               <Text style={styles.value}>{formatMoney(data.monthRevenueUsd)}</Text>
             </View>
             {data.quarterRevenueUsd != null ? (
               <View style={styles.card}>
-                <Text style={styles.label}>{t('billingScreen.plans.team.f4')}</Text>
+                <Text style={styles.label}>{t('reportsScreen.quarterRevenue')}</Text>
                 <Text style={styles.value}>{formatMoney(data.quarterRevenueUsd)}</Text>
               </View>
             ) : null}
             <View style={styles.card}>
-              <Text style={styles.label}>Конверсия в закрытие</Text>
+              <Text style={styles.label}>{t('reportsScreen.closeConversion')}</Text>
               <Text style={styles.value}>{data.conversionPct}%</Text>
             </View>
             <View style={styles.card}>
-              <Text style={styles.label}>Сделок / закрытых</Text>
+              <Text style={styles.label}>{t('reportsScreen.dealsTotalClosed')}</Text>
               <Text style={styles.value}>
                 {data.totalDeals} / {data.closedDeals}
               </Text>
             </View>
             <View style={styles.card}>
-              <Text style={styles.label}>Просроченные задачи</Text>
+              <Text style={styles.label}>{t('reportsScreen.overdueTasks')}</Text>
               <Text style={styles.value}>{data.overdueTasks}</Text>
             </View>
           </View>

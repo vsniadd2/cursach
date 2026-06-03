@@ -101,7 +101,7 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
             amount,
             "USD",
             GetString(after, "cardLast4", "CardLast4"),
-            "Банковская карта",
+            PdfBilingualLabels.Receipt.BankCard,
             GetString(after, "status", "Status") ?? subscription?.Status ?? "active",
             previousPlan,
             log.CreatedAtUtc,
@@ -129,8 +129,8 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
         var card = string.IsNullOrWhiteSpace(d.CardLast4) ? "—" : $"**** **** **** {d.CardLast4}";
         var prevPlan = string.IsNullOrWhiteSpace(d.PreviousPlanCode) ? "—" : d.PreviousPlanCode.ToUpperInvariant();
         var billingCycle = d.PlanCode.Equals("team", StringComparison.OrdinalIgnoreCase)
-            ? "Ежемесячно · оплата за место (от 5 участников)"
-            : "Ежемесячная подписка";
+            ? PdfBilingualLabels.Receipt.TeamBillingCycle
+            : PdfBilingualLabels.Receipt.MonthlySubscription;
 
         return Document.Create(container =>
         {
@@ -150,7 +150,7 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
                         header.RelativeItem().Column(brand =>
                         {
                             brand.Item().Text(MerchantName).Bold().FontSize(22).FontColor(Colors.Black);
-                            brand.Item().Text("Чек об оплате подписки").FontSize(12).FontColor(Colors.Grey.Darken3);
+                            brand.Item().Text(PdfBilingualLabels.Receipt.SubscriptionReceipt).FontSize(12).FontColor(Colors.Grey.Darken3);
                             brand.Item().PaddingTop(4).Text(MerchantLegal).FontSize(8).FontColor(Colors.Grey.Darken2);
                         });
 
@@ -162,7 +162,7 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
                                 .Height(108)
                                 .Svg(_ => qrSvg);
                             qrCol.Item().AlignRight().PaddingTop(4)
-                                .Text("QR проверки").FontSize(7).FontColor(Colors.Grey.Darken2);
+                                .Text(PdfBilingualLabels.Receipt.QrVerification).FontSize(7).FontColor(Colors.Grey.Darken2);
                             qrCol.Item().AlignRight()
                                 .Text(d.ReceiptNumber).FontSize(7).Bold();
                         });
@@ -172,30 +172,30 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
 
                     root.Item().Row(titleRow =>
                     {
-                        titleRow.RelativeItem().Text("ПЛАТЁЖНЫЙ ДОКУМЕНТ").Bold().FontSize(14);
-                        titleRow.ConstantItem(180).AlignRight().Text($"Выпущен: {paidAt} UTC").FontSize(8);
+                        titleRow.RelativeItem().Text(PdfBilingualLabels.Receipt.PaymentDocument).Bold().FontSize(14);
+                        titleRow.ConstantItem(180).AlignRight().Text(PdfBilingualLabels.Receipt.IssuedAt(paidAt)).FontSize(8);
                     });
 
                     root.Item().Background(Colors.Grey.Lighten4).Padding(12).Column(box =>
                     {
                         box.Spacing(6);
-                        TwoCol(box, "Номер чека", d.ReceiptNumber);
-                        TwoCol(box, "ID транзакции", d.TransactionId);
-                        TwoCol(box, "Запись аудита", $"#{d.AuditLogId}");
-                        TwoCol(box, "Организация", $"{d.TenantName} (ID {d.TenantId})");
-                        TwoCol(box, "Код организации", d.TenantSlug);
-                        TwoCol(box, "Плательщик", d.PayerName ?? "—");
-                        TwoCol(box, "E-mail плательщика", d.PayerEmail ?? "—");
-                        TwoCol(box, "Способ оплаты", d.PaymentMethod);
-                        TwoCol(box, "Карта", card);
-                        TwoCol(box, "Статус платежа", StatusLabel(d.Status));
-                        TwoCol(box, "Предыдущий тариф", prevPlan);
-                        TwoCol(box, "Новый тариф", $"{d.PlanName} ({d.PlanCode.ToUpperInvariant()})");
-                        TwoCol(box, "Период подписки", $"{periodStart} — {periodEnd}");
-                        TwoCol(box, "Тип списания", billingCycle);
+                        TwoCol(box, PdfBilingualLabels.Receipt.ReceiptNumber, d.ReceiptNumber);
+                        TwoCol(box, PdfBilingualLabels.Receipt.TransactionId, d.TransactionId);
+                        TwoCol(box, PdfBilingualLabels.Receipt.AuditLogEntry, $"#{d.AuditLogId}");
+                        TwoCol(box, PdfBilingualLabels.Receipt.Organization, $"{d.TenantName} (ID {d.TenantId})");
+                        TwoCol(box, PdfBilingualLabels.Receipt.OrganizationCode, d.TenantSlug);
+                        TwoCol(box, PdfBilingualLabels.Receipt.Payer, d.PayerName ?? "—");
+                        TwoCol(box, PdfBilingualLabels.Receipt.PayerEmail, d.PayerEmail ?? "—");
+                        TwoCol(box, PdfBilingualLabels.Receipt.PaymentMethod, d.PaymentMethod);
+                        TwoCol(box, PdfBilingualLabels.Receipt.Card, card);
+                        TwoCol(box, PdfBilingualLabels.Receipt.PaymentStatus, StatusLabel(d.Status));
+                        TwoCol(box, PdfBilingualLabels.Receipt.PreviousPlan, prevPlan);
+                        TwoCol(box, PdfBilingualLabels.Receipt.NewPlan, $"{d.PlanName} ({d.PlanCode.ToUpperInvariant()})");
+                        TwoCol(box, PdfBilingualLabels.Receipt.SubscriptionPeriod, $"{periodStart} — {periodEnd}");
+                        TwoCol(box, PdfBilingualLabels.Receipt.BillingCycle, billingCycle);
                     });
 
-                    root.Item().Text("Состав платежа").Bold().FontSize(11);
+                    root.Item().Text(PdfBilingualLabels.Receipt.PaymentBreakdown).Bold().FontSize(11);
                     root.Item().Table(table =>
                     {
                         table.ColumnsDefinition(columns =>
@@ -208,40 +208,40 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
                         table.Header(header =>
                         {
                             header.Cell().Background(Colors.Grey.Lighten3).Padding(8)
-                                .Text("Наименование").Bold().FontSize(9);
+                                .Text(PdfBilingualLabels.Receipt.Description).Bold().FontSize(9);
                             header.Cell().Background(Colors.Grey.Lighten3).Padding(8)
-                                .Text("Период").Bold().FontSize(9);
+                                .Text(PdfBilingualLabels.Receipt.Period).Bold().FontSize(9);
                             header.Cell().Background(Colors.Grey.Lighten3).Padding(8).AlignRight()
-                                .Text("Сумма").Bold().FontSize(9);
+                                .Text(PdfBilingualLabels.Receipt.Amount).Bold().FontSize(9);
                         });
 
                         var periodLabel = d.PeriodEndUtc is DateTime end
-                            ? $"до {end:dd.MM.yyyy}"
-                            : "1 мес.";
+                            ? PdfBilingualLabels.Receipt.Until(end.ToString("dd.MM.yyyy"))
+                            : PdfBilingualLabels.Receipt.OneMonth;
 
                         table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(8)
-                            .Text($"Подписка {d.PlanName} — CRM Expogo");
+                            .Text(PdfBilingualLabels.Receipt.SubscriptionLine(d.PlanName));
                         table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(8)
                             .Text(periodLabel);
                         table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(8).AlignRight()
                             .Text(amount).Bold();
 
                         table.Cell().ColumnSpan(2).Background(Colors.Grey.Lighten4).Padding(8)
-                            .AlignRight().Text("ИТОГО К ОПЛАТЕ").Bold();
+                            .AlignRight().Text(PdfBilingualLabels.Receipt.TotalDue).Bold();
                         table.Cell().Background(Colors.Grey.Lighten4).Padding(8).AlignRight()
                             .Text(amount).Bold().FontSize(12);
                     });
 
-                    root.Item().Text("Включено в тариф").Bold().FontSize(11);
+                    root.Item().Text(PdfBilingualLabels.Receipt.PlanIncludes).Bold().FontSize(11);
                     root.Item().Column(features =>
                     {
                         features.Spacing(4);
-                        Feature(features, "Участники команды", LimitLabel(d.SeatsLimit, "мест"));
-                        Feature(features, "Контакты", LimitLabel(d.ContactsLimit, "контактов"));
-                        Feature(features, "Воронки продаж", LimitLabel(d.FunnelsLimit, "воронок"));
-                        Feature(features, "Облачное хранилище", $"{d.StorageGbLimit} ГБ на пользователя");
-                        Feature(features, "Интеграции и API", d.Integrations && d.OpenApi ? "Да" : "Нет");
-                        Feature(features, "VIP-поддержка 24/7", d.VipSupport ? "Да" : "Нет");
+                        Feature(features, PdfBilingualLabels.Receipt.TeamSeats, LimitLabel(d.SeatsLimit, "мест", "seats"));
+                        Feature(features, PdfBilingualLabels.Receipt.Contacts, LimitLabel(d.ContactsLimit, "контактов", "contacts"));
+                        Feature(features, PdfBilingualLabels.Receipt.SalesFunnels, LimitLabel(d.FunnelsLimit, "воронок", "funnels"));
+                        Feature(features, PdfBilingualLabels.Receipt.CloudStorage, PdfBilingualLabels.Receipt.GbPerUser(d.StorageGbLimit));
+                        Feature(features, PdfBilingualLabels.Receipt.IntegrationsApi, d.Integrations && d.OpenApi ? PdfBilingualLabels.Receipt.Yes : PdfBilingualLabels.Receipt.No);
+                        Feature(features, PdfBilingualLabels.Receipt.VipSupport, d.VipSupport ? PdfBilingualLabels.Receipt.Yes : PdfBilingualLabels.Receipt.No);
                     });
 
                     root.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
@@ -249,14 +249,14 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
                     {
                         footer.RelativeItem().Column(left =>
                         {
-                            left.Item().Text("Платёж успешно проведён. Подписка активирована.").FontSize(9);
-                            left.Item().Text($"НДС: не облагается (цифровая услуга) · Валюта расчёта: {d.Currency}").FontSize(8)
+                            left.Item().Text(PdfBilingualLabels.Receipt.PaymentSuccess).FontSize(9);
+                            left.Item().Text(PdfBilingualLabels.Receipt.VatNote(d.Currency)).FontSize(8)
                                 .FontColor(Colors.Grey.Darken2);
                             left.Item().PaddingTop(4).Text(SupportLine).FontSize(8).FontColor(Colors.Grey.Darken2);
                         });
                         footer.ConstantItem(140).AlignRight().Column(right =>
                         {
-                            right.Item().Text("Подпись сервиса").FontSize(8).FontColor(Colors.Grey.Darken2);
+                            right.Item().Text(PdfBilingualLabels.Receipt.ServiceSignature).FontSize(8).FontColor(Colors.Grey.Darken2);
                             right.Item().Text("EXPogo · Billing").Bold().FontSize(10);
                         });
                     });
@@ -302,10 +302,14 @@ public sealed class PaymentReceiptPdfService : IPaymentReceiptPdfService
     }
 
     private static string StatusLabel(string status) =>
-        status.Equals("active", StringComparison.OrdinalIgnoreCase) ? "Оплачено · активна" : status;
+        status.Equals("active", StringComparison.OrdinalIgnoreCase)
+            ? PdfBilingualLabels.Receipt.PaidActive
+            : status;
 
-    private static string LimitLabel(int limit, string unit) =>
-        BillingPlans.IsUnlimited(limit) ? "Без ограничений" : $"До {limit} {unit}";
+    private static string LimitLabel(int limit, string unitRu, string unitEn) =>
+        BillingPlans.IsUnlimited(limit)
+            ? PdfBilingualLabels.Receipt.Unlimited
+            : PdfBilingualLabels.Receipt.UpTo(limit, unitRu, unitEn);
 
     private static void EnsureFont()
     {
