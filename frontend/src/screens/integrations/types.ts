@@ -12,6 +12,7 @@ export type ProviderSummary = {
 
 export type ProviderDetail = ProviderSummary & {
   config: Record<string, unknown>;
+  oauthServerConfigured?: boolean | null;
   secrets: {
     hasBotToken?: boolean;
     hasSmtpPassword?: boolean;

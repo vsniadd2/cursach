@@ -50,6 +50,7 @@ public class BillingController(
 
         var plan = await billing.GetPlanAsync(tenantId, ct);
         var usage = await billing.GetUsageAsync(tenantId, ct);
+        var storageQuota = await billing.GetStorageQuotaAsync(tenantId, ct);
 
         return Ok(new
         {
@@ -68,6 +69,8 @@ public class BillingController(
                 plan.FunnelsLimit,
                 plan.SeatsLimit,
                 plan.StorageGbLimit,
+                storageGbPerSeat = plan.StorageGbLimit,
+                storageGbTotalLimit = storageQuota.StorageGbTotalLimit,
                 plan.MinSeats,
             },
             usage = new

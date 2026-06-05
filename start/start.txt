@@ -7,6 +7,7 @@
    Логи сида: docker compose logs seed
    После изменений только бэкенда (чек PDF, API, миграции):
      docker compose build api && docker compose up -d api
+   Облачный диск: «Ещё» → Облачный диск; квота = ГБ/сотрудник × активные участники (FREE 1, PRO 10, TEAM 50)
    Пересоздать только демо-CRM: docker compose run --rm seed node seed-demo.js --force-crm
 
 2. Frontend
@@ -29,14 +30,20 @@
 
 ИИ-советник (OpenRouter, «Ещё» → admin, тариф PRO/TEAM):
   1. Ключ: https://openrouter.ai/keys
-  2. backend/appsettings.json → Ai:Llm:ApiKey (модель: Ai:Llm:Model, список на openrouter.ai/models)
+  2. backend/appsettings.json → Ai:Llm:ApiKey; модель по умолчанию: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free (Ai:Llm:Model)
   3. Docker: $env:OPENROUTER_API_KEY = "ваш-ключ"; docker compose build api; docker compose up -d api
 
 Интеграции («Ещё» → Интеграции, admin, тариф PRO/TEAM):
   Telegram: @BotFather → токен бота; chat id — напишите боту, откройте https://api.telegram.org/bot<TOKEN>/getUpdates
   Email: SMTP (Gmail — пароль приложения, smtp.gmail.com:587, TLS)
   Google Calendar:
-    1. Google Cloud Console → OAuth client (Web)
-    2. Redirect URI: http://localhost:5278/integrations/google-calendar/callback
-    3. backend/appsettings.json → Integrations:Google:ClientId, ClientSecret
-    4. В приложении: «Подключить Google» → после входа редирект на http://localhost:8081/?gcal=connected
+    1. Google Cloud Console → APIs → Calendar API; OAuth consent screen (External, test users)
+    2. Credentials → OAuth client (Web) → Redirect URI:
+       http://localhost:5278/integrations/google-calendar/callback
+    3. Docker (рекомендуется): скопируйте .env.example → .env, заполните:
+       GOOGLE_OAUTH_CLIENT_ID=....apps.googleusercontent.com
+       GOOGLE_OAUTH_CLIENT_SECRET=...
+       docker compose up -d --build api
+       (или $env:GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET перед docker compose)
+    4. Локальный dotnet run: backend/appsettings.json → Integrations:Google:ClientId, ClientSecret
+    5. В приложении: «Подключить Google» → после входа редирект на http://localhost:8081/?gcal=connected

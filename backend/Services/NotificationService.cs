@@ -12,6 +12,7 @@ public static class NotificationTypes
     public const string DealClosingSoon = "DealClosingSoon";
     public const string TeamRoleChanged = "TeamRoleChanged";
     public const string TeamBlocked = "TeamBlocked";
+    public const string TaskAssignedByManager = "TaskAssignedByManager";
 }
 
 public interface INotificationService

@@ -44,6 +44,8 @@ type SubscriptionDto = {
     funnelsLimit: number;
     seatsLimit: number;
     storageGbLimit: number;
+    storageGbPerSeat?: number;
+    storageGbTotalLimit?: number;
   };
   usage: {
     contacts: number;
@@ -292,9 +294,17 @@ export function BillingScreen({ navigation }: Props) {
               <View style={styles.usageRow}>
                 <Text style={styles.usageLabel}>{t('billingScreen.usageStorage')}</Text>
                 <Text style={styles.usageValue}>
-                  {sub.usage.storageGb} / {sub.limits.storageGbLimit} GB
+                  {sub.usage.storageGb} / {sub.limits.storageGbTotalLimit ?? sub.limits.storageGbLimit} GB
                 </Text>
               </View>
+              {sub.limits.storageGbPerSeat ? (
+                <View style={styles.usageRow}>
+                  <Text style={styles.usageLabel}>{t('billingScreen.usageStoragePerSeat')}</Text>
+                  <Text style={styles.usageValue}>
+                    {sub.limits.storageGbPerSeat} GB × {sub.usage.activeSeats}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </>
         ) : null}

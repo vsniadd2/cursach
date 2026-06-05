@@ -11,7 +11,9 @@ public interface ITenantIntegrationService
     Task<TenantIntegration?> GetEntityAsync(int tenantId, string provider, CancellationToken ct = default);
 }
 
-public sealed class TenantIntegrationService(ExpogoDbContext db) : ITenantIntegrationService
+public sealed class TenantIntegrationService(
+    ExpogoDbContext db,
+    IGoogleCalendarIntegrationService googleCalendar) : ITenantIntegrationService
 {
     static readonly Dictionary<string, string> DisplayNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -44,7 +46,7 @@ public sealed class TenantIntegrationService(ExpogoDbContext db) : ITenantIntegr
     {
         ValidateProvider(provider);
         var row = await GetOrCreateTrackedAsync(tenantId, provider, ct);
-        return ToDetail(provider, row);
+        return ToDetail(provider, row, googleCalendar.IsOAuthConfigured);
     }
 
     public async Task<IntegrationProviderDetailDto> UpsertAsync(
@@ -67,7 +69,7 @@ public sealed class TenantIntegrationService(ExpogoDbContext db) : ITenantIntegr
 
         row.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        return ToDetail(provider, row);
+        return ToDetail(provider, row, googleCalendar.IsOAuthConfigured);
     }
 
     public Task<TenantIntegration?> GetEntityAsync(int tenantId, string provider, CancellationToken ct = default) =>
@@ -193,7 +195,7 @@ public sealed class TenantIntegrationService(ExpogoDbContext db) : ITenantIntegr
         };
     }
 
-    static IntegrationProviderDetailDto ToDetail(string provider, TenantIntegration row)
+    static IntegrationProviderDetailDto ToDetail(string provider, TenantIntegration row, bool googleOAuthConfigured)
     {
         object config = provider switch
         {
@@ -209,6 +211,9 @@ public sealed class TenantIntegrationService(ExpogoDbContext db) : ITenantIntegr
             Name = DisplayNames[provider],
             IsEnabled = row.IsEnabled,
             IsConfigured = IsConfigured(provider, row),
+            OauthServerConfigured = provider.Equals(IntegrationProviders.GoogleCalendar, StringComparison.OrdinalIgnoreCase)
+                ? googleOAuthConfigured
+                : null,
             Config = config,
             Secrets = new IntegrationSecretFlagsDto
             {

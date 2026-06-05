@@ -264,7 +264,7 @@ export function integrationJobStatusLabel(status: string, language: AppLanguage 
   }
 }
 
-export function notificationIcon(type: string): 'assignment-late' | 'today' | 'priority-high' | 'sync-alt' | 'event' | 'admin-panel-settings' | 'block' | 'notifications' {
+export function notificationIcon(type: string): 'assignment-late' | 'today' | 'priority-high' | 'assignment-ind' | 'sync-alt' | 'event' | 'admin-panel-settings' | 'block' | 'notifications' {
   switch (type) {
     case 'TaskOverdue':
       return 'assignment-late';
@@ -272,6 +272,8 @@ export function notificationIcon(type: string): 'assignment-late' | 'today' | 'p
       return 'today';
     case 'TaskHighPriority':
       return 'priority-high';
+    case 'TaskAssignedByManager':
+      return 'assignment-ind';
     case 'DealStageChanged':
       return 'sync-alt';
     case 'DealClosingSoon':

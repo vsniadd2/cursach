@@ -21,17 +21,19 @@ public sealed class PermissionRequirementHandler(ICurrentTenantAccessor accessor
             CrmPermissions.ClientsRead, CrmPermissions.ClientsWrite, CrmPermissions.DealsRead, CrmPermissions.DealsWrite,
             CrmPermissions.TasksRead, CrmPermissions.TasksWrite, CrmPermissions.DashboardRead, CrmPermissions.ReportsRead,
             CrmPermissions.SupportRead, CrmPermissions.SupportWrite,
+            CrmPermissions.CloudStorageRead, CrmPermissions.CloudStorageWrite,
         ],
         [TenantRole.Member] =
         [
             CrmPermissions.ClientsRead, CrmPermissions.ClientsWrite, CrmPermissions.DealsRead, CrmPermissions.DealsWrite,
             CrmPermissions.TasksRead, CrmPermissions.TasksWrite, CrmPermissions.DashboardRead,
             CrmPermissions.SupportRead, CrmPermissions.SupportWrite,
+            CrmPermissions.CloudStorageRead, CrmPermissions.CloudStorageWrite,
         ],
         [TenantRole.Viewer] =
         [
             CrmPermissions.ClientsRead, CrmPermissions.DealsRead, CrmPermissions.TasksRead, CrmPermissions.DashboardRead,
-            CrmPermissions.SupportRead,
+            CrmPermissions.SupportRead, CrmPermissions.CloudStorageRead,
         ],
     };
 

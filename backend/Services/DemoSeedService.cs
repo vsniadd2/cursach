@@ -142,7 +142,7 @@ public class DemoSeedService(ExpogoDbContext db, IConfiguration configuration) :
                 PlanCode = "pro",
                 Status = "active",
                 SeatsLimit = 10,
-                StorageGbLimit = 50,
+                StorageGbLimit = 10,
                 CurrentPeriodStartUtc = now,
                 CurrentPeriodEndUtc = now.AddMonths(1),
             });

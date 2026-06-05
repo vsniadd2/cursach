@@ -3,6 +3,14 @@ import type { AppLanguage } from '../utils/locale';
 const ru = {
   header: {
     plan: 'Тариф',
+    appName: 'Экспого',
+    markLetter: 'Э',
+    tagline: 'клиенты, сделки и задачи',
+    back: 'Назад',
+    notifications: 'Уведомления',
+    unread: 'непрочитанных',
+    brandAlertMessage: 'Главный экран и быстрые действия.',
+    ok: 'ОК',
   },
   tabs: {
     dashboard: 'Главная',
@@ -26,6 +34,7 @@ const ru = {
     aiAdvisor: 'ИИ-советник',
     audit: 'Аудит',
     support: 'Поддержка',
+    cloudStorage: 'Облачный диск',
     placeholder: 'Раздел',
   },
   more: {
@@ -50,6 +59,19 @@ const ru = {
     reportsDesc: 'Сводные отчёты по воронке, закрытым сделкам и эффективности менеджеров.',
     support: 'Помощь и поддержка',
     supportDesc: 'Канал обратной связи, подсказки по работе с системой и FAQ для пользователей.',
+    cloudStorage: 'Облачный диск',
+    cloudStorageDesc: 'Файлы команды с квотой по тарифу: ГБ на каждого сотрудника.',
+  },
+  cloudStorage: {
+    title: 'Облачный диск',
+    sub: 'Общее хранилище организации. Лимит = ГБ на сотрудника × число активных участников команды.',
+    quotaTitle: 'Использование',
+    perSeatHint: 'ГБ на сотрудника',
+    upload: 'Загрузить файл',
+    download: 'Скачать',
+    deleteTitle: 'Удалить файл?',
+    empty: 'Пока нет файлов. Загрузите документы, договоры или вложения.',
+    webOnlyUpload: 'Загрузка файлов доступна в web-версии.',
   },
   settings: {
     title: 'Настройки',
@@ -216,6 +238,10 @@ const ru = {
     saveError: 'Не удалось сохранить',
     testError: 'Ошибка теста',
     googleConnected: 'Google Calendar подключён',
+    googleOAuthNotConfigured:
+      'Google OAuth не настроен на сервере. Создайте OAuth client в Google Cloud Console и задайте GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET в .env для Docker (см. start/start.txt).',
+    googleOAuthSetupHint:
+      'Чтобы подключить календарь, администратор сервера должен указать GOOGLE_OAUTH_CLIENT_ID и GOOGLE_OAUTH_CLIENT_SECRET в .env и перезапустить API (docker compose up -d --build api).',
   },
   teamScreen: {
     title: 'Пользователи',
@@ -250,6 +276,7 @@ const ru = {
     usageSeats: 'Места',
     usagePipelines: 'Воронки',
     usageStorage: 'Хранилище',
+    usageStoragePerSeat: 'ГБ на сотрудника',
     unlimited: '∞',
     payment: {
       title: 'Оплата подписки',
@@ -314,6 +341,7 @@ const ru = {
       teamRoles: 'Управление ролями доступно только на тарифе TEAM.',
       reports: 'Отчёты недоступны на бесплатном тарифе FREE.',
       teamMinSeats: 'Тариф TEAM доступен для команд от 5 активных участников.',
+      storage: 'Лимит облачного диска исчерпан. Удалите файлы или смените тариф.',
       downgradeUsage: 'Сократите использование ресурсов перед сменой тарифа.',
     },
   },
@@ -326,11 +354,28 @@ const ru = {
     loadError: 'Ошибка загрузки',
     loading: 'Загрузка…',
   },
+  taskEdit: {
+    assignee: 'Исполнитель',
+    assigneePlaceholder: 'Не назначен',
+    assigneeSearch: 'Поиск по имени…',
+    assigneeNone: '—',
+  },
+  notificationsScreen: {
+    taskFromManager: 'Задача от руководителя',
+  },
 } as const;
 
 const en = {
   header: {
     plan: 'Plan',
+    appName: 'EXPOGO',
+    markLetter: 'E',
+    tagline: 'clients, deals and tasks',
+    back: 'Back',
+    notifications: 'Notifications',
+    unread: 'unread',
+    brandAlertMessage: 'Home screen and quick actions.',
+    ok: 'OK',
   },
   tabs: {
     dashboard: 'Home',
@@ -354,6 +399,7 @@ const en = {
     aiAdvisor: 'AI advisor',
     audit: 'Audit log',
     support: 'Support',
+    cloudStorage: 'Cloud drive',
     placeholder: 'Section',
   },
   more: {
@@ -378,6 +424,19 @@ const en = {
     reportsDesc: 'Pipeline summaries, closed deals, and manager performance.',
     support: 'Help & support',
     supportDesc: 'Feedback channel, how-to guides, and FAQ.',
+    cloudStorage: 'Cloud drive',
+    cloudStorageDesc: 'Team files with per-seat storage quota by plan.',
+  },
+  cloudStorage: {
+    title: 'Cloud drive',
+    sub: 'Shared org storage. Limit = GB per employee × active team members.',
+    quotaTitle: 'Usage',
+    perSeatHint: 'GB per employee',
+    upload: 'Upload file',
+    download: 'Download',
+    deleteTitle: 'Delete file?',
+    empty: 'No files yet. Upload documents, contracts, or attachments.',
+    webOnlyUpload: 'File upload is available in the web app.',
   },
   settings: {
     title: 'Settings',
@@ -544,6 +603,10 @@ const en = {
     saveError: 'Could not save',
     testError: 'Test failed',
     googleConnected: 'Google Calendar connected',
+    googleOAuthNotConfigured:
+      'Google OAuth is not configured on the server. Create an OAuth client in Google Cloud Console and set GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET in .env for Docker (see start/start.txt).',
+    googleOAuthSetupHint:
+      'To connect Calendar, the server admin must set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in .env and restart the API (docker compose up -d --build api).',
   },
   teamScreen: {
     title: 'Users',
@@ -578,6 +641,7 @@ const en = {
     usageSeats: 'Seats',
     usagePipelines: 'Pipelines',
     usageStorage: 'Storage',
+    usageStoragePerSeat: 'GB per employee',
     unlimited: '∞',
     payment: {
       title: 'Subscribe & pay',
@@ -642,6 +706,7 @@ const en = {
       teamRoles: 'Role management is available on TEAM plan only.',
       reports: 'Reports are not available on the FREE plan.',
       teamMinSeats: 'TEAM plan requires at least 5 active team members.',
+      storage: 'Cloud storage limit reached. Delete files or upgrade your plan.',
       downgradeUsage: 'Reduce resource usage before changing your plan.',
     },
   },
@@ -653,6 +718,15 @@ const en = {
     signOut: 'Sign out',
     loadError: 'Failed to load',
     loading: 'Loading…',
+  },
+  taskEdit: {
+    assignee: 'Assignee',
+    assigneePlaceholder: 'Unassigned',
+    assigneeSearch: 'Search by name…',
+    assigneeNone: '—',
+  },
+  notificationsScreen: {
+    taskFromManager: 'Task from manager',
   },
 };
 

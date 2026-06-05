@@ -6,6 +6,8 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View, Alert } from 'r
 import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 import { useCallback, useMemo, useState } from 'react';
 
+import { AppActionSheet } from '../components/AppActionSheet';
+
 import { ClientAvatarImage } from '../components/ClientAvatarImage';
 import { useAuth } from '../auth/AuthContext';
 import { getJson } from '../api/requests';
@@ -48,6 +50,7 @@ export function ClientDetailScreen({ navigation, route }: Props) {
 
   const [data, setData] = useState<ClientDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const clientId = route.params.clientId;
 
@@ -111,29 +114,23 @@ export function ClientDetailScreen({ navigation, route }: Props) {
   };
 
   const onHeaderMenuPress = () => {
+    setMenuOpen(true);
+  };
+
+  const clientMenuActions = useMemo(() => {
     const id = client?.id ?? route.params.clientId;
-    const subtitle = client?.fullName ?? `Клиент #${id}`;
-    const tabNav = getTabNavigator();
-    if (!tabNav?.navigate) {
-      Alert.alert('Навигация', 'Не удалось перейти в другой раздел.');
-      return;
-    }
-    Alert.alert('Действия', subtitle, [
+    return [
       {
         text: 'Редактировать',
-        onPress: () => {
-          tabNav.navigate('Clients', { screen: 'ClientEdit', params: { clientId: id } });
-        },
+        onPress: () => navigation.navigate('ClientEdit', { clientId: id }),
       },
       {
         text: 'Новая сделка',
-        onPress: () => {
-          tabNav.navigate('Deals', { screen: 'DealEdit', params: { clientId: id } });
-        },
+        onPress: () => openDealEdit({ clientId: id }),
       },
-      { text: 'Отмена', style: 'cancel' },
-    ]);
-  };
+      { text: 'Отмена', style: 'cancel' as const },
+    ];
+  }, [client?.id, navigation, openDealEdit, route.params.clientId]);
 
   return (
     <View style={styles.root}>
@@ -302,6 +299,14 @@ export function ClientDetailScreen({ navigation, route }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      <AppActionSheet
+        actions={clientMenuActions}
+        message={client?.fullName ?? `Клиент #${route.params.clientId}`}
+        title="Действия"
+        visible={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      />
     </View>
   );
 }

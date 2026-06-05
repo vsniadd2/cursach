@@ -168,6 +168,7 @@ public class TasksController : ControllerBase
                 ct
             );
         }
+        await NotifyAssigneeIfNeededAsync(tenantId, item, previousAssigneeName: null, ct);
         return CreatedAtAction(nameof(GetOne), new { id = item.Id }, new { id = item.Id });
     }
 
@@ -182,6 +183,7 @@ public class TasksController : ControllerBase
         var item = await _db.Tasks.SingleOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId, ct);
         if (item is null) return NotFound(new { message = "Задача не найдена" });
         var before = new { item.Date, item.Title, item.Priority, item.Done };
+        var previousAssigneeName = item.AssigneeName;
 
         var title = req.Title.Trim();
         if (title.Length == 0) return BadRequest(new { message = "Название не может быть пустым" });
@@ -197,6 +199,7 @@ public class TasksController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await _audit.WriteAsync(tenantId, "tasks.update", nameof(TaskItem), item.Id.ToString(), before, item, ct);
         _integrations.SyncTaskToCalendar(tenantId, item.Id);
+        await NotifyAssigneeIfNeededAsync(tenantId, item, previousAssigneeName, ct);
         return NoContent();
     }
 
@@ -257,6 +260,65 @@ public class TasksController : ControllerBase
             .Select(x => new { x.Id, x.Date, x.Title, x.Priority, x.AssigneeName })
             .ToListAsync(ct);
         return Ok(new { total = overdue.Count, items = overdue });
+    }
+
+    private async Task NotifyAssigneeIfNeededAsync(
+        int tenantId,
+        TaskItem item,
+        string? previousAssigneeName,
+        CancellationToken ct
+    )
+    {
+        if (string.IsNullOrWhiteSpace(item.AssigneeName))
+            return;
+
+        var newName = item.AssigneeName.Trim();
+        if (string.Equals(previousAssigneeName?.Trim(), newName, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        var assigneeUserId = await ResolveAssigneeUserIdAsync(tenantId, newName, ct);
+        if (assigneeUserId is null)
+            return;
+
+        if (_current.UserId is not null && assigneeUserId.Value == _current.UserId.Value)
+            return;
+
+        var body = $"«{item.Title}» — {item.Date:dd.MM.yyyy}";
+        if (item.Time is not null)
+            body += $" в {item.Time:HH\\:mm}";
+
+        await _notifications.NotifyUserAsync(
+            tenantId,
+            assigneeUserId.Value,
+            NotificationTypes.TaskAssignedByManager,
+            "Задача от руководителя",
+            body,
+            nameof(TaskItem),
+            item.Id.ToString(),
+            $"task-assigned:{item.Id}:{assigneeUserId.Value}",
+            ct
+        );
+    }
+
+    private async Task<int?> ResolveAssigneeUserIdAsync(int tenantId, string assigneeName, CancellationToken ct)
+    {
+        var name = assigneeName.Trim();
+        if (name.Length == 0)
+            return null;
+
+        var members = await _db.TenantMemberships.AsNoTracking()
+            .Where(x => x.TenantId == tenantId && !x.User.IsBlocked)
+            .Select(x => new { x.UserId, x.User.Username, x.User.FullName })
+            .ToListAsync(ct);
+
+        foreach (var m in members)
+        {
+            var display = string.IsNullOrWhiteSpace(m.FullName) ? m.Username : m.FullName.Trim();
+            if (string.Equals(display, name, StringComparison.OrdinalIgnoreCase))
+                return m.UserId;
+        }
+
+        return null;
     }
 }
 

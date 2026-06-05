@@ -12,8 +12,8 @@ public sealed class AiLlmOptions
     /// <summary>OpenAI-совместимый base URL (без завершающего слэша).</summary>
     public string BaseUrl { get; set; } = "https://openrouter.ai/api/v1";
 
-    /// <summary>Идентификатор модели у провайдера, напр. openai/gpt-4o-mini.</summary>
-    public string Model { get; set; } = "openai/gpt-4o-mini";
+    /// <summary>Идентификатор модели у провайдера (OpenRouter slug).</summary>
+    public string Model { get; set; } = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
 
     /// <summary>Опционально для OpenRouter (HTTP-Referer).</summary>
     public string? SiteUrl { get; set; }
@@ -21,7 +21,7 @@ public sealed class AiLlmOptions
     /// <summary>Опционально для OpenRouter (X-Title).</summary>
     public string? AppName { get; set; }
 
-    public int MaxTokens { get; set; } = 2000;
+    public int MaxTokens { get; set; } = 4096;
     public double Temperature { get; set; } = 0.4;
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ApiKey);

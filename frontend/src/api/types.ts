@@ -136,7 +136,8 @@ export type NotificationType =
   | 'DealStageChanged'
   | 'DealClosingSoon'
   | 'TeamRoleChanged'
-  | 'TeamBlocked';
+  | 'TeamBlocked'
+  | 'TaskAssignedByManager';
 
 export type NotificationItem = {
   id: number;

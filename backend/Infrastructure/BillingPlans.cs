@@ -6,6 +6,7 @@ public sealed class BillingPlanDefinition
     public required string Name { get; init; }
     public decimal? PriceUsdPerSeatMonthly { get; init; }
     public int SeatsLimit { get; init; }
+    /// <summary>ГБ облачного диска на одного активного сотрудника.</summary>
     public int StorageGbLimit { get; init; }
     public int ContactsLimit { get; init; }
     public int FunnelsLimit { get; init; }
@@ -45,7 +46,7 @@ public static class BillingPlans
             Name = "PRO",
             PriceUsdPerSeatMonthly = 50.99m,
             SeatsLimit = 10,
-            StorageGbLimit = 50,
+            StorageGbLimit = 10,
             ContactsLimit = 2000,
             FunnelsLimit = 5,
             MinSeats = 1,
@@ -62,7 +63,7 @@ public static class BillingPlans
             Name = "TEAM",
             PriceUsdPerSeatMonthly = 79.99m,
             SeatsLimit = 9999,
-            StorageGbLimit = 5000,
+            StorageGbLimit = 50,
             ContactsLimit = -1,
             FunnelsLimit = -1,
             MinSeats = 5,
@@ -87,4 +88,10 @@ public static class BillingPlans
         Find(planCode)?.Code ?? "free";
 
     public static bool IsUnlimited(int limit) => limit < 0;
+
+    public static int TotalStorageGb(int storageGbPerSeat, int activeSeats) =>
+        storageGbPerSeat * Math.Max(1, activeSeats);
+
+    public static long TotalStorageBytes(int storageGbPerSeat, int activeSeats) =>
+        (long)TotalStorageGb(storageGbPerSeat, activeSeats) * 1024L * 1024L * 1024L;
 }

@@ -1,9 +1,9 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
+import { BrandTitle } from '../components/BrandTitle';
 import { APP_NAME } from '../constants/brand';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
@@ -113,22 +113,15 @@ function createShellStyles(colors: AppPalette) {
       top: 0,
       left: 0,
       right: 0,
-      paddingHorizontal: 18,
-      justifyContent: 'center',
-      backgroundColor: `${colors.surfaceContainerLow}CC`,
+      paddingHorizontal: 24,
+      paddingBottom: 16,
+      justifyContent: 'flex-end',
+      backgroundColor: `${colors.surfaceContainerLow}D9`,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: `${colors.outlineVariant}66`,
     },
-    brandRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    brandText: {
-      fontSize: 18,
-      fontWeight: '900',
-      letterSpacing: 2.4,
-      color: colors.blue700,
+    brandTitle: {
+      marginTop: -1,
     },
     bgWrap: {
       ...StyleSheet.absoluteFillObject,
@@ -250,23 +243,23 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
   const formTitleFontSize = isCompact ? 26 : 30;
   const formSubtitleFontSize = isCompact ? 13 : 14;
   const headMarginBottom = isCompact ? 12 : 16;
+  const topBarHeight = insets.top + 8 + 16 + 34;
 
   const heroTitle = useMemo(() => {
     return (
-      <Text style={[styles.heroTitle, { fontSize: heroTitleFontSize, lineHeight: heroTitleLineHeight }]}>
-        Масштабируй{'\n'}продажи с{'\n'}
-        <Text style={{ color: colors.primary }}>{APP_NAME}</Text>.
-      </Text>
+      <View>
+        <Text style={[styles.heroTitle, { fontSize: heroTitleFontSize, lineHeight: heroTitleLineHeight }]}>
+          Масштабируй{'\n'}продажи с
+        </Text>
+        <BrandTitle style={{ marginTop: 4 }} />
+      </View>
     );
-  }, [colors.primary, heroTitleFontSize, heroTitleLineHeight, styles.heroTitle]);
+  }, [heroTitleFontSize, heroTitleLineHeight, styles.heroTitle]);
 
   return (
     <View style={styles.root}>
-      <View style={[styles.topBar, { height: 72 + insets.top, paddingTop: insets.top }]}>
-        <View style={styles.brandRow}>
-          <MaterialIcons color={colors.blue700} name="bubble-chart" size={26} />
-          <Text style={styles.brandText}>{APP_NAME}</Text>
-        </View>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <BrandTitle style={styles.brandTitle} numberOfLines={1} />
       </View>
 
       <View style={styles.bgWrap}>
@@ -287,7 +280,7 @@ export function AuthShell({ title, subtitle, footer, children }: Props) {
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: 72 + insets.top + 24, paddingBottom: Math.max(insets.bottom, 18) + 18 },
+          { paddingTop: topBarHeight + 24, paddingBottom: Math.max(insets.bottom, 18) + 18 },
         ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"

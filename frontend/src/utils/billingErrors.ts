@@ -11,6 +11,8 @@ const CODE_TO_KEY: Record<string, MessageKey> = {
   'billing.limit.reports': 'billing.limits.reports',
   'billing.limit.teamMinSeats': 'billing.limits.teamMinSeats',
   'billing.limit.downgradeUsage': 'billing.limits.downgradeUsage',
+  'billing.limit.storage': 'billing.limits.storage',
+  'google.not_configured': 'integrationsScreen.googleOAuthNotConfigured',
 };
 
 export function resolveBillingErrorMessage(

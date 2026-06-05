@@ -31,3 +31,8 @@ __pycache__/
 *.bak
 KP/_extracted*.txt
 KP/_table_dump*.txt
+KP/_debug_*.docx
+KP/_all_raw.txt
+KP/_rawtc.txt
+KP/_cell_method.txt
+_login.json

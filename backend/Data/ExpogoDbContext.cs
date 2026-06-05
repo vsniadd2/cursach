@@ -31,6 +31,7 @@ public class ExpogoDbContext : DbContext
     public DbSet<AiAdvisorSession> AiAdvisorSessions => Set<AiAdvisorSession>();
     public DbSet<AiAdvisorMessage> AiAdvisorMessages => Set<AiAdvisorMessage>();
     public DbSet<TenantIntegration> TenantIntegrations => Set<TenantIntegration>();
+    public DbSet<TenantCloudFile> TenantCloudFiles => Set<TenantCloudFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -236,5 +237,20 @@ public class ExpogoDbContext : DbContext
         modelBuilder.Entity<TenantIntegration>()
             .HasIndex(x => new { x.TenantId, x.Provider })
             .IsUnique();
+
+        modelBuilder.Entity<TenantCloudFile>()
+            .HasOne(x => x.Tenant)
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<TenantCloudFile>()
+            .HasOne(x => x.UploadedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.UploadedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TenantCloudFile>()
+            .HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
     }
 }

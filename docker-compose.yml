@@ -27,7 +27,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://0.0.0.0:5278
       Seed__RunDemoOnStartup: "true"
-      # Опционально: OPENROUTER_API_KEY переопределяет Ai:Llm:ApiKey (не задавайте пустым)
+      Storage__RootPath: /app/data/cloud
+      Integrations__Google__ClientId: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      Integrations__Google__ClientSecret: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    volumes:
+      - cloud_data:/app/data/cloud
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,3 +69,4 @@ services:
 
 volumes:
   postgres_data:
+  cloud_data:

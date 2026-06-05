@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AiAdvisorScreen } from '../screens/AiAdvisorScreen';
 import { AuditLogScreen } from '../screens/AuditLogScreen';
 import { BillingScreen } from '../screens/BillingScreen';
+import { CloudStorageScreen } from '../screens/CloudStorageScreen';
 import { IntegrationProviderSettingsScreen } from '../screens/IntegrationProviderSettingsScreen';
 import { IntegrationsScreen } from '../screens/IntegrationsScreen';
 import { MoreScreen } from '../screens/MoreScreen';
@@ -30,6 +31,7 @@ export function MoreStackNavigator() {
       />
       <Stack.Screen component={AiAdvisorScreen} name="MoreAiAdvisor" options={{ title: 'ИИ-советник' }} />
       <Stack.Screen component={AuditLogScreen} name="MoreAuditLog" options={{ title: 'Аудит' }} />
+      <Stack.Screen component={CloudStorageScreen} name="MoreCloudStorage" options={{ title: 'Облачный диск' }} />
       <Stack.Screen component={SupportScreen} name="MoreSupport" options={{ title: 'Поддержка' }} />
     </Stack.Navigator>
   );

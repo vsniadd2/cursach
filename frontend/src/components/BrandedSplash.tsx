@@ -1,12 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 
 import { APP_NAME } from '../constants/brand';
 
+import { BrandTitleStatic } from './BrandTitle';
+
 import { lightColors } from '../theme/palettes';
-import { rnwShadow } from '../utils/rnwShadow';
 
 const MIN_VISIBLE_MS = 1700;
 
@@ -23,12 +23,9 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
   const mountAt = useRef(Date.now());
   const shellOpacity = useRef(new Animated.Value(1)).current;
   const shellScale = useRef(new Animated.Value(1)).current;
-  const logoEnter = useRef(new Animated.Value(0)).current;
   const titleEnter = useRef(new Animated.Value(0)).current;
-  const tagEnter = useRef(new Animated.Value(0)).current;
   const ringPulse = useRef(new Animated.Value(0)).current;
   const ringRotate = useRef(new Animated.Value(0)).current;
-  const iconSpin = useRef(new Animated.Value(0)).current;
   const dot0 = useRef(new Animated.Value(0.3)).current;
   const dot1 = useRef(new Animated.Value(0.3)).current;
   const dot2 = useRef(new Animated.Value(0.3)).current;
@@ -37,33 +34,13 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
   const useNativeDriver = Platform.OS !== 'web';
 
   useEffect(() => {
-    Animated.spring(logoEnter, {
+    Animated.spring(titleEnter, {
       toValue: 1,
       friction: 8,
       tension: 70,
       useNativeDriver,
       overshootClamping: true,
     }).start();
-
-    Animated.sequence([
-      Animated.delay(180),
-      Animated.timing(titleEnter, {
-        toValue: 1,
-        duration: 520,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver,
-      }),
-    ]).start();
-
-    Animated.sequence([
-      Animated.delay(420),
-      Animated.timing(tagEnter, {
-        toValue: 1,
-        duration: 480,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver,
-      }),
-    ]).start();
 
     const pulseLoop = Animated.loop(
       Animated.sequence([
@@ -93,24 +70,6 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
     );
     spinLoop.start();
 
-    const iconLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconSpin, {
-          toValue: 1,
-          duration: 2800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-        Animated.timing(iconSpin, {
-          toValue: 0,
-          duration: 2800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver,
-        }),
-      ]),
-    );
-    iconLoop.start();
-
     const dotLoops = dots.map((d, i) =>
       Animated.loop(
         Animated.sequence([
@@ -133,7 +92,6 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
     return () => {
       pulseLoop.stop();
       spinLoop.stop();
-      iconLoop.stop();
       dotLoops.forEach((l) => l.stop());
     };
     // Анимации заставки — один раз при монтировании (стабильные ref на Animated.Value).
@@ -177,14 +135,9 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
-  const iconWobble = iconSpin.interpolate({
+  const titleScale = titleEnter.interpolate({
     inputRange: [0, 1],
-    outputRange: ['-8deg', '8deg'],
-  });
-
-  const logoScale = logoEnter.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.65, 1],
+    outputRange: [0.72, 1],
   });
 
   return (
@@ -211,32 +164,18 @@ export function BrandedSplash({ fontsLoaded, onAnimationComplete }: Props) {
 
         <Animated.View
           style={[
-            styles.logoBlock,
+            styles.titleWrap,
             {
-              opacity: logoEnter,
-              transform: [{ scale: logoScale }],
+              opacity: titleEnter,
+              transform: [
+                { scale: titleScale },
+                { translateY: titleEnter.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
+              ],
             },
           ]}
         >
-          <LinearGradient
-            colors={['#ffffff', '#e0e7ff']}
-            end={{ x: 1, y: 1 }}
-            start={{ x: 0, y: 0 }}
-            style={styles.logoBadge}
-          >
-            <Animated.View style={{ transform: [{ rotate: iconWobble }] }}>
-              <Ionicons color={lightColors.primary} name="infinite" size={56} />
-            </Animated.View>
-          </LinearGradient>
+          <BrandTitleStatic name={APP_NAME} size="splash" />
         </Animated.View>
-
-        <Animated.View style={[styles.titleWrap, { opacity: titleEnter, transform: [{ translateY: titleEnter.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }]}>
-          <Text style={styles.title}>{APP_NAME}</Text>
-        </Animated.View>
-
-        <Animated.Text style={[styles.tagline, { opacity: tagEnter, transform: [{ translateY: tagEnter.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }] }]}>
-          клиенты · сделки · задачи
-        </Animated.Text>
 
         <View style={styles.dotsRow}>
           {dots.map((d, i) => (
@@ -288,40 +227,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.45)',
   },
-  logoBlock: {
-    marginBottom: 28,
-  },
-  logoBadge: {
-    width: 112,
-    height: 112,
-    borderRadius: 32,
+  titleWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    ...rnwShadow({ offset: { width: 0, height: 16 }, opacity: 0.45, radius: 24, elevation: 20 }),
-  },
-  titleWrap: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 40,
-    fontWeight: '800',
-    color: '#ffffff',
-    letterSpacing: -1,
-  },
-  titleAccent: {
-    fontSize: 40,
-    fontWeight: '200',
-    color: 'rgba(255,255,255,0.92)',
-    letterSpacing: 2,
-  },
-  tagline: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.72)',
-    letterSpacing: 3.2,
-    textTransform: 'uppercase',
   },
   dotsRow: {
     position: 'absolute',

@@ -24,6 +24,7 @@ export type MoreStackParamList = {
   MoreIntegrationSettings: { provider: 'telegram' | 'email' | 'google_calendar' };
   MoreAiAdvisor: undefined;
   MoreAuditLog: undefined;
+  MoreCloudStorage: undefined;
 };
 
 export type MainTabParamList = {

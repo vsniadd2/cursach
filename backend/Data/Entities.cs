@@ -378,9 +378,32 @@ public class BillingSubscription
     public string Status { get; set; } = "active";
 
     public int SeatsLimit { get; set; } = 5;
+    /// <summary>ГБ облачного диска на сотрудника (см. BillingPlans).</summary>
     public int StorageGbLimit { get; set; } = 5;
     public DateTime CurrentPeriodStartUtc { get; set; } = DateTime.UtcNow;
     public DateTime CurrentPeriodEndUtc { get; set; } = DateTime.UtcNow.AddMonths(1);
+}
+
+public class TenantCloudFile
+{
+    public long Id { get; set; }
+    public int TenantId { get; set; }
+    public Tenant Tenant { get; set; } = null!;
+    public int UploadedByUserId { get; set; }
+    public AppUser UploadedByUser { get; set; } = null!;
+
+    [MaxLength(255)]
+    public required string FileName { get; set; }
+
+    [MaxLength(128)]
+    public string ContentType { get; set; } = "application/octet-stream";
+
+    public long SizeBytes { get; set; }
+
+    [MaxLength(512)]
+    public required string StorageKey { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
 public class UsageMetric

@@ -21,7 +21,8 @@ type MoreRowId =
   | 'aiAdvisor'
   | 'audit'
   | 'reports'
-  | 'support';
+  | 'support'
+  | 'cloudStorage';
 
 const ROWS: Array<{
   id: MoreRowId;
@@ -35,6 +36,7 @@ const ROWS: Array<{
   { id: 'aiAdvisor', icon: 'psychology', adminOnly: true },
   { id: 'audit', icon: 'history', adminOnly: true },
   { id: 'reports', icon: 'description', adminOnly: true },
+  { id: 'cloudStorage', icon: 'cloud', adminOnly: false },
   { id: 'support', icon: 'help-outline', adminOnly: false },
 ];
 
@@ -146,6 +148,9 @@ export function MoreScreen({ navigation }: Props) {
         return;
       case 'support':
         navigation.navigate('MoreSupport');
+        return;
+      case 'cloudStorage':
+        navigation.navigate('MoreCloudStorage');
         return;
     }
   };

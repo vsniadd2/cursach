@@ -9,6 +9,8 @@ import { deleteJson, getJson, postJson, putJson } from '../api/requests';
 import { AppHeader } from '../components/AppHeader';
 import { AppTextInput } from '../components/AppTextInput';
 import { DatePickerField } from '../components/DatePickerField';
+import { SearchableSelectField } from '../components/SearchableSelectField';
+import { useI18n } from '../i18n/useI18n';
 import type { RootStackParamList } from '../navigation/types';
 import { useAutoRefresh } from '../data/useAutoRefresh';
 import { useDataSync } from '../data/DataSyncContext';
@@ -25,6 +27,7 @@ type TeamMember = {
   userId: number;
   username: string;
   fullName: string | null;
+  isBlocked?: boolean;
 };
 
 type TeamResponse = { items: TeamMember[] };
@@ -76,6 +79,7 @@ function formatHhMmInput(text: string): string {
 export function TaskEditScreen({ navigation, route }: Props) {
   const colors = useAppColors();
   const { language } = useAppPreferences();
+  const { t } = useI18n();
   const styles = useMemo(() => createTaskEditStyles(colors), [colors]);
   const insets = useAppSafeAreaInsets();
   const bottomPad = 120 + insets.bottom;
@@ -145,6 +149,14 @@ export function TaskEditScreen({ navigation, route }: Props) {
   }, [auth, isEdit, taskId]);
 
   useAutoRefresh(['tasks'], loadTask);
+
+  const assigneeOptions = useMemo(
+    () =>
+      team
+        .filter((m) => !m.isBlocked)
+        .map((m) => ({ id: m.userId, label: memberDisplayName(m) })),
+    [team],
+  );
 
   const onSave = async () => {
     if (loading) return;
@@ -225,28 +237,17 @@ export function TaskEditScreen({ navigation, route }: Props) {
         <Text style={styles.label}>Описание</Text>
         <AppTextInput value={description} onChangeText={setDescription} style={[styles.input, { minHeight: 90 }]} multiline />
 
-        <Text style={styles.label}>Исполнитель</Text>
-        <View style={styles.assigneeRow}>
-          <Pressable
-            onPress={() => setAssigneeName('')}
-            style={[styles.assigneeChip, !assigneeName.trim() && styles.assigneeChipActive]}
-          >
-            <Text style={[styles.assigneeChipText, !assigneeName.trim() && styles.assigneeChipTextActive]}>—</Text>
-          </Pressable>
-          {team.map((m) => {
-            const name = memberDisplayName(m);
-            const active = assigneeName === name;
-            return (
-              <Pressable
-                key={m.userId}
-                onPress={() => setAssigneeName(name)}
-                style={[styles.assigneeChip, active && styles.assigneeChipActive]}
-              >
-                <Text style={[styles.assigneeChipText, active && styles.assigneeChipTextActive]}>{name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Text style={styles.label}>{t('taskEdit.assignee')}</Text>
+        <SearchableSelectField
+          value={assigneeName.trim() || null}
+          options={assigneeOptions}
+          onChange={(label) => setAssigneeName(label ?? '')}
+          placeholder={t('taskEdit.assigneePlaceholder')}
+          searchPlaceholder={t('taskEdit.assigneeSearch')}
+          sheetTitle={t('taskEdit.assignee')}
+          emptyLabel={t('taskEdit.assigneeNone')}
+          allowEmpty
+        />
 
         <Text style={styles.label}>Время</Text>
         <AppTextInput
@@ -315,18 +316,6 @@ function createTaskEditStyles(colors: AppPalette) {
     borderColor: `${colors.outlineVariant}33`,
   },
   row: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  assigneeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  assigneeChip: {
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: `${colors.outlineVariant}22`,
-  },
-  assigneeChipActive: { backgroundColor: colors.primaryContainer, borderColor: `${colors.primary}33` },
-  assigneeChipText: { fontSize: 12, fontWeight: '800', color: colors.onSurfaceVariant },
-  assigneeChipTextActive: { color: colors.onPrimaryContainer },
   pill: {
     flex: 1,
     borderRadius: 999,

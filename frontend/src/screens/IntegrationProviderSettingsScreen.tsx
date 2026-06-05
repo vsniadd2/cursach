@@ -70,6 +70,13 @@ function createStyles(colors: AppPalette) {
       color: colors.onSurfaceVariant,
       marginTop: 4,
     },
+    hint: {
+      fontSize: 12,
+      color: colors.onSurfaceVariant,
+      lineHeight: 18,
+      marginTop: 8,
+    },
+    btnDisabled: { opacity: 0.45 },
   });
 }
 
@@ -320,7 +327,19 @@ export function IntegrationProviderSettingsScreen({ navigation, route }: Props) 
         ) : (
           <Text style={styles.statusBadge}>{t('integrationsScreen.notConfigured')}</Text>
         )}
-        <Pressable style={[styles.btn, styles.btnSecondary, { marginTop: 12 }]} onPress={() => void connectGoogle()}>
+        {detail.oauthServerConfigured === false ? (
+          <Text style={styles.hint}>{t('integrationsScreen.googleOAuthSetupHint')}</Text>
+        ) : null}
+        <Pressable
+          disabled={detail.oauthServerConfigured === false}
+          style={[
+            styles.btn,
+            styles.btnSecondary,
+            { marginTop: 12 },
+            detail.oauthServerConfigured === false && styles.btnDisabled,
+          ]}
+          onPress={() => void connectGoogle()}
+        >
           <Text style={[styles.btnText, styles.btnTextSecondary]}>{t('integrationsScreen.connectGoogle')}</Text>
         </Pressable>
         <Text style={styles.label}>{t('integrationsScreen.calendarId')}</Text>

@@ -1,17 +1,15 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { BrandTitle } from './BrandTitle';
 import { useAppSafeAreaInsets } from '../web/useAppSafeAreaInsets';
 
-import { APP_NAME } from '../constants/brand';
-import { useBillingSubscription } from '../data/BillingSubscriptionContext';
+import { useI18n } from '../i18n/useI18n';
 import { useOpenNotifications } from '../navigation/useOpenNotifications';
 import { useNotifications } from '../notifications/NotificationsContext';
 import { useAppColors } from '../theme/AppPreferencesContext';
 import type { AppPalette } from '../theme/palettes';
-import { planDisplayName } from '../utils/billingPlans';
-import { rnwShadow } from '../utils/rnwShadow';
 
 type AppHeaderProps = {
   onNotificationsPress?: () => void;
@@ -45,49 +43,13 @@ function createStyles(colors: AppPalette) {
     brand: {
       flex: 1,
       minWidth: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
       paddingVertical: 6,
       paddingRight: 12,
       borderRadius: 16,
-    },
-    left: {
-      flex: 1,
-      minWidth: 0,
-    },
-    mark: {
-      width: 40,
-      height: 40,
-      borderRadius: 14,
-      alignItems: 'center',
       justifyContent: 'center',
-      ...rnwShadow({ color: colors.primary, offset: { width: 0, height: 3 }, opacity: 0.25, radius: 6, elevation: 4 }),
     },
-    markText: {
-      fontSize: 20,
-      fontWeight: '900',
-      color: colors.onPrimary,
+    titleWrap: {
       marginTop: -1,
-    },
-    title: {
-      fontSize: 20,
-      fontWeight: '800',
-      letterSpacing: -0.4,
-      color: colors.onSurface,
-    },
-    subtitle: {
-      marginTop: 1,
-      fontSize: 12,
-      fontWeight: '600',
-      color: colors.onSurfaceVariant,
-    },
-    planStatus: {
-      marginTop: 3,
-      fontSize: 12,
-      fontWeight: '700',
-      color: '#000000',
-      letterSpacing: 0.3,
     },
     iconBtn: {
       width: 40,
@@ -130,24 +92,25 @@ function createStyles(colors: AppPalette) {
 export function AppHeader({ onNotificationsPress, onBackPress }: AppHeaderProps) {
   const insets = useAppSafeAreaInsets();
   const colors = useAppColors();
+  const { t } = useI18n();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const openNotifications = useOpenNotifications();
   const { unreadCount } = useNotifications();
-  const { subscription, loading: billingLoading } = useBillingSubscription();
   const onBellPress = onNotificationsPress ?? openNotifications;
   const badgeLabel = unreadCount > 9 ? '9+' : String(unreadCount);
 
-  const planLabel = useMemo(() => {
-    if (billingLoading || !subscription) return null;
-    return planDisplayName(subscription.planName || subscription.planCode);
-  }, [billingLoading, subscription]);
+  const appName = t('header.appName');
+  const notificationsA11y =
+    unreadCount > 0
+      ? `${t('header.notifications')}, ${unreadCount} ${t('header.unread')}`
+      : t('header.notifications');
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 8 }]}>
       <View style={styles.row}>
         {onBackPress ? (
           <Pressable
-            accessibilityLabel="Назад"
+            accessibilityLabel={t('header.back')}
             accessibilityRole="button"
             hitSlop={12}
             onPress={onBackPress}
@@ -157,30 +120,18 @@ export function AppHeader({ onNotificationsPress, onBackPress }: AppHeaderProps)
           </Pressable>
         ) : null}
         <Pressable
-          accessibilityLabel={APP_NAME}
+          accessibilityLabel={appName}
           accessibilityRole="button"
           hitSlop={10}
           onPress={() =>
-            Alert.alert(APP_NAME, 'Главный экран и быстрые действия.', [{ text: 'ОК' }])
+            Alert.alert(appName, t('header.brandAlertMessage'), [{ text: t('header.ok') }])
           }
           style={({ pressed }) => [styles.brand, pressed && styles.pressed]}
         >
-          <LinearGradient
-            colors={[colors.primary, colors.primaryContainer]}
-            end={{ x: 1, y: 1 }}
-            start={{ x: 0, y: 0 }}
-            style={styles.mark}
-          >
-            <Text style={styles.markText}>Э</Text>
-          </LinearGradient>
-          <View style={styles.left}>
-            <Text style={styles.title}>{APP_NAME}</Text>
-            <Text style={styles.subtitle}>клиенты, сделки и задачи</Text>
-            {planLabel ? <Text style={styles.planStatus}>{planLabel}</Text> : null}
-          </View>
+          <BrandTitle style={styles.titleWrap} numberOfLines={1} />
         </Pressable>
         <Pressable
-          accessibilityLabel={unreadCount > 0 ? `Уведомления, ${unreadCount} непрочитанных` : 'Уведомления'}
+          accessibilityLabel={notificationsA11y}
           accessibilityRole="button"
           hitSlop={12}
           onPress={onBellPress}

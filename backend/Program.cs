@@ -41,6 +41,8 @@ builder.Services.AddDbContext<ExpogoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IBillingEntitlementsService, BillingEntitlementsService>();
+builder.Services.Configure<CloudStorageOptions>(builder.Configuration.GetSection(CloudStorageOptions.SectionName));
+builder.Services.AddScoped<ICloudStorageService, CloudStorageService>();
 builder.Services.AddScoped<IDemoSeedService, DemoSeedService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddScoped<IAuditTrailService, AuditTrailService>();
@@ -48,10 +50,31 @@ builder.Services.AddSingleton<IPaymentReceiptPdfService, PaymentReceiptPdfServic
 builder.Services.AddScoped<IReportsAnalyticsService, ReportsAnalyticsService>();
 builder.Services.AddSingleton<IReportsPdfService, ReportsPdfService>();
 builder.Services.Configure<AiLlmOptions>(builder.Configuration.GetSection(AiLlmOptions.SectionName));
-builder.Services.AddHttpClient<OpenAiChatLlmClient>();
+builder.Services.PostConfigure<AiLlmOptions>(options =>
+{
+    var envKey = builder.Configuration["OPENROUTER_API_KEY"];
+    if (!string.IsNullOrWhiteSpace(envKey))
+        options.ApiKey = envKey.Trim();
+});
+builder.Services.AddHttpClient<OpenAiChatLlmClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(180);
+});
 builder.Services.AddHttpClient(nameof(TelegramIntegrationClient));
 builder.Services.AddHttpClient(nameof(GoogleCalendarIntegrationService));
 builder.Services.Configure<GoogleIntegrationOptions>(builder.Configuration.GetSection(GoogleIntegrationOptions.SectionName));
+builder.Services.PostConfigure<GoogleIntegrationOptions>(options =>
+{
+    var clientId = builder.Configuration["GOOGLE_OAUTH_CLIENT_ID"]
+        ?? builder.Configuration["Integrations:Google:ClientId"];
+    if (!string.IsNullOrWhiteSpace(clientId))
+        options.ClientId = clientId.Trim();
+
+    var clientSecret = builder.Configuration["GOOGLE_OAUTH_CLIENT_SECRET"]
+        ?? builder.Configuration["Integrations:Google:ClientSecret"];
+    if (!string.IsNullOrWhiteSpace(clientSecret))
+        options.ClientSecret = clientSecret.Trim();
+});
 builder.Services.AddScoped<ITenantIntegrationService, TenantIntegrationService>();
 builder.Services.AddSingleton<ITelegramIntegrationClient, TelegramIntegrationClient>();
 builder.Services.AddSingleton<ISmtpEmailIntegrationClient, SmtpEmailIntegrationClient>();

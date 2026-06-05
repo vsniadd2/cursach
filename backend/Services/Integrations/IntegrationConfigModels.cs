@@ -76,6 +76,8 @@ public sealed class IntegrationProviderDetailDto
     public required string Name { get; init; }
     public bool IsEnabled { get; init; }
     public bool IsConfigured { get; init; }
+    /// <summary>Google Calendar: OAuth client настроен на сервере (ClientId + Secret).</summary>
+    public bool? OauthServerConfigured { get; init; }
     public object Config { get; init; } = new { };
     public IntegrationSecretFlagsDto Secrets { get; init; } = new();
 }

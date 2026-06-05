@@ -56,6 +56,20 @@ def set_cell_text(cell, text: str) -> None:
         set_para_preserve_format(para, "")
 
 
+def fill_table_rows(table, rows_data: list[list[str]]) -> None:
+    """Заполнить таблицу по физическим w:tc (корректно при слиянии ячеек Word)."""
+    from docx.table import _Cell
+
+    for ri, tr in enumerate(table._tbl.findall(qn("w:tr"))):
+        if ri >= len(rows_data):
+            break
+        row_values = rows_data[ri]
+        for ci, tc in enumerate(tr.findall(qn("w:tc"))):
+            if ci >= len(row_values):
+                break
+            set_cell_text(_Cell(tc, table), row_values[ci])
+
+
 def apply_global_replacements(text: str) -> str:
     for old, new in GLOBAL_REPLACEMENTS:
         text = text.replace(old, new)
@@ -169,14 +183,7 @@ def build(output_name: str = OUTPUT_NAME) -> Path:
     for ti, table in enumerate(doc.tables):
         if ti >= len(TABLES):
             break
-        rows_data = TABLES[ti]
-        for ri, row in enumerate(table.rows):
-            if ri >= len(rows_data):
-                break
-            for ci, cell in enumerate(row.cells):
-                if ci >= len(rows_data[ri]):
-                    break
-                set_cell_text(cell, rows_data[ri][ci])
+        fill_table_rows(table, TABLES[ti])
 
     remove_all_images(doc)
     apply_photo_placeholders(doc, drawing_indices)

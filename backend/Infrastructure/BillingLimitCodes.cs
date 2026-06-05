@@ -11,6 +11,7 @@ public static class BillingLimitCodes
     public const string Reports = "billing.limit.reports";
     public const string TeamMinSeats = "billing.limit.teamMinSeats";
     public const string DowngradeUsage = "billing.limit.downgradeUsage";
+    public const string Storage = "billing.limit.storage";
 }
 
 public sealed class BillingCheckResult
