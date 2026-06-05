@@ -52,7 +52,7 @@ export default function App() {
   if (!splashDone) {
     return (
       <View style={styles.boot}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <BrandedSplash fontsLoaded={loaded} onAnimationComplete={() => setSplashDone(true)} />
       </View>
     );
@@ -90,6 +90,6 @@ export default function App() {
 const styles = StyleSheet.create({
   boot: {
     flex: 1,
-    backgroundColor: '#001233',
+    backgroundColor: '#FFFFFF',
   },
 });
